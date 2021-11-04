@@ -32,8 +32,29 @@ export default function IndexPage() {
 		init()
 	}, [])
 
+	const noWarningsEl = (
+		<div className="mt-6">
+			<Title className="p-3 text-center">Sem Avisos!</Title>
+		</div>
+	)
+
+	const loadingEl = (
+		<Layout>
+			<div className="mt-6">
+				<Title className="p-3 text-center">A procurar avisos ativos...</Title>
+				<div className="fa-3x text-center">
+					<i className="fas fa-spinner fa-spin" />
+				</div>
+			</div>
+		</Layout>
+	)
+
 	if (warnings === false) {
-		return <p>loading...</p>
+		return loadingEl
+	}
+
+	if (warnings.length === 0) {
+		return noWarningsEl
 	}
 
 	/**

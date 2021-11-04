@@ -15,7 +15,7 @@ export default function Footer() {
 					>
 						&nbsp;Tomahock
 					</a>
-					&nbsp;Powered by
+					&nbsp;| Powered by
 					<a
 						href="https://twitter.com/vostpt"
 						className="no-underline"
@@ -23,6 +23,24 @@ export default function Footer() {
 						rel="noreferrer"
 					>
 						&nbsp;VostPT
+					</a>
+					&nbsp;| Data from
+					<a
+						href="https://www.ipma.pt/pt/otempo/prev-sam/"
+						className="no-underline"
+						target="_blank"
+						rel="noreferrer"
+					>
+						&nbsp;IPMA
+					</a>
+					&nbsp;|
+					<a
+						href="https://vost.pt/avisos-meteorologicos/"
+						className="no-underline"
+						target="_blank"
+						rel="noreferrer"
+					>
+						&nbsp;Read more
 					</a>
 				</p>
 			</div>
