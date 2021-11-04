@@ -80,41 +80,37 @@ export default function IndexPage() {
 
 	function renderCards(alarms) {
 		const warningsElCard = alarms.map((alarm, i) => (
-			<Card border shadow className="w-full md:w-1/2 xl:w-1/3">
-				<CardBody>
-					<Image
+			<div className="w-full md:w-1/2 xl:w-1/3 border shadow">
+				<div>
+					<img
 						src={getWarningImage(alarm.nivel, alarm.tipo)}
-						aspectRatio={1793 / 896}
 						className="relative"
+						alt={alarm.tipo}
 					/>
-					<Subtitle size={4}>{alarm.tipo}</Subtitle>
-					<p>{alarm.descricao}</p>
-				</CardBody>
-				<CardFooter>
-					<p>
+					<h3 className="text-3xl font-extrabold text-gray-900 tracking-tight p-2">
+						{alarm.tipo}
+					</h3>
+					<p className="p-2">{alarm.descricao}</p>
+				</div>
+				<div className="p-2">
+					<p className="text-right text-xs">
 						Válido de {alarm.inicio} a {alarm.fim}
 					</p>
-				</CardFooter>
-			</Card>
+				</div>
+			</div>
 		))
 
 		return warningsElCard
 	}
 
 	const warningsEl = warnings.map((district, i) => (
-		<div className="container">
-			<Title size={6} key={i}>
+		<div className="mt-6">
+			<Title className="p-3 text-center" size={6} key={i}>
 				{district.local}
 			</Title>
-			<div className="flex flex-row flex-wrap flex-grow mt-2">
-				{renderCards(district.alertas)}
-			</div>
+			<div className="grid p-6">{renderCards(district.alertas)}</div>
 		</div>
 	))
 
-	return (
-		<Layout>
-			<div className="container">{warningsEl}</div>
-		</Layout>
-	)
+	return <Layout>{warningsEl}</Layout>
 }
