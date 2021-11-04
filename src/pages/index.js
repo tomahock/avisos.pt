@@ -1,14 +1,7 @@
-import React, { useEffect, useState } from 'react'
-import {
-	Card,
-	CardBody,
-	Image,
-	CardFooter,
-	Title,
-	Subtitle,
-} from 'tailwind-react-ui'
+import React, { useEffect, useState, setState } from 'react'
+import { Title } from 'tailwind-react-ui'
+
 import Layout from '../layouts/index'
-import WarningsCard from '../components/WarningCard'
 
 const GetWarnings = async (warning) => {
 	const url = 'https://bot-api.vost.pt/getAlertas.php'
