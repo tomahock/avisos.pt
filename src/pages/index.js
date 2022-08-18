@@ -91,7 +91,7 @@ export default function IndexPage() {
 			// eslint-disable-next-line no-param-reassign
 			weatherType = 'TempoQuente'
 		}
-    
+
 		const type = removeAccent(weatherType)
 		return `https://bot-api.vost.pt/images/warnings/Twitter_Post_Aviso${level}_${type}.png`
 	}
