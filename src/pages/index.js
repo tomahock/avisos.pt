@@ -87,7 +87,11 @@ export default function IndexPage() {
 		} else if (weatherType === 'Agitação Marítima') {
 			// eslint-disable-next-line no-param-reassign
 			weatherType = 'AgitacaoMaritima'
+		} else if (weatherType === 'Tempo Quente') {
+			// eslint-disable-next-line no-param-reassign
+			weatherType = 'TempoQuente'
 		}
+    
 		const type = removeAccent(weatherType)
 		return `https://bot-api.vost.pt/images/warnings/Twitter_Post_Aviso${level}_${type}.png`
 	}
