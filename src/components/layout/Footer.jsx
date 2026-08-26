@@ -1,6 +1,3 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-
 export default function Footer() {
 	return (
 		<footer className="text-sm leading-5 tracking-normal text-gray-400 mt-6">
