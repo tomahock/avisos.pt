@@ -1,112 +1,96 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import Layout from '../layouts/index.jsx'
-import { areaName } from '../data/ipmaAreas.js'
+import DistrictGroup from '../components/warnings/DistrictGroup.jsx'
+import DistrictOverview from '../components/warnings/DistrictOverview.jsx'
+import StateEmpty from '../components/warnings/StateEmpty.jsx'
+import StateError from '../components/warnings/StateError.jsx'
+import StateLoading from '../components/warnings/StateLoading.jsx'
+import { IPMA_AREAS, IPMA_AREA_CODES, areaCentroid } from '../data/ipmaAreas.js'
+import { nearestStationWithObs } from '../utils/geo.js'
 
-// FogosPT: filenames on bot-api.vost.pt don't match the API's `awarenessTypeName`
-// 1:1. Overrides applied before accent-stripping.
-const TYPE_FILENAME_OVERRIDES = {
-	'Precipitação': 'Chuva',
-	'Agitação Marítima': 'AgitacaoMaritima',
-	'Tempo Quente': 'TempoQuente',
-}
-
-// FogosPT levels → Portuguese labels used in bot-api image filenames.
-const LEVEL_LABEL = {
-	yellow: 'Amarelo',
-	orange: 'Laranja',
-	red: 'Vermelho',
-}
-
-// Full literal class names so Tailwind's JIT picks them up.
-const LEVEL_BORDER = {
-	yellow: 'border-yellow-400',
-	orange: 'border-orange-500',
-	red: 'border-red-600',
-}
-
-function removeAccents(str) {
-	return str.normalize('NFD').replace(/[̀-ͯ]/g, '')
-}
-
-function getWarningImage(level, weatherType) {
-	const levelLabel = LEVEL_LABEL[level]
-	if (!levelLabel) return null
-	const mapped = TYPE_FILENAME_OVERRIDES[weatherType] ?? weatherType
-	const type = removeAccents(mapped)
-	return `https://bot-api.vost.pt/images/warnings/Twitter_Post_Aviso${levelLabel}_${type}.png`
-}
-
-function formatWhen(iso) {
-	const d = new Date(iso)
-	if (Number.isNaN(d.getTime())) return iso
-	return d.toLocaleString('pt-PT', {
-		day: '2-digit',
-		month: '2-digit',
-		hour: '2-digit',
-		minute: '2-digit',
-	})
+async function fetchJson(url, signal) {
+	const res = await fetch(url, { signal })
+	if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`)
+	return res.json()
 }
 
 function groupByArea(warnings) {
 	const map = new Map()
 	for (const w of warnings) {
-		if (!map.has(w.idAreaAviso)) map.set(w.idAreaAviso, [])
-		map.get(w.idAreaAviso).push(w)
+		const list = map.get(w.idAreaAviso)
+		if (list) list.push(w)
+		else map.set(w.idAreaAviso, [w])
 	}
-	return Array.from(map, ([id, items]) => ({ id, name: areaName(id), items }))
-}
-
-function Heading({ children, className = '' }) {
-	return (
-		<h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${className}`}>
-			{children}
-		</h2>
-	)
-}
-
-function WarningCard({ warning }) {
-	const img = getWarningImage(warning.awarenessLevelID, warning.awarenessTypeName)
-	const border = LEVEL_BORDER[warning.awarenessLevelID] ?? 'border-gray-300'
-	return (
-		<div className={`w-full md:w-1/2 xl:w-1/3 border-4 shadow ${border}`}>
-			{img && (
-				<img src={img} className="relative" alt={warning.awarenessTypeName} />
-			)}
-			<h3 className="text-3xl font-extrabold text-gray-900 tracking-tight p-2">
-				{warning.awarenessTypeName}
-			</h3>
-			<p className="p-2">{warning.text}</p>
-			<div className="p-2">
-				<p className="text-right text-xs">
-					Válido de {formatWhen(warning.startTime)} a {formatWhen(warning.endTime)}
-				</p>
-			</div>
-		</div>
-	)
+	return map
 }
 
 export default function IndexPage() {
 	const [warnings, setWarnings] = useState(null)
+	const [stations, setStations] = useState([])
+	const [obsByStation, setObsByStation] = useState({})
 	const [error, setError] = useState(null)
+	const [updatedAt, setUpdatedAt] = useState(null)
+	const [reloadKey, setReloadKey] = useState(0)
 
 	useEffect(() => {
-		fetch('/api/warnings')
-			.then((res) => {
-				if (!res.ok) throw new Error(`HTTP ${res.status}`)
-				return res.json()
+		const ctrl = new AbortController()
+
+		// Warnings is the only blocking fetch. Stations + observations
+		// enrich the UI but must not break the page if they fail.
+		fetchJson('/api/warnings', ctrl.signal)
+			.then((data) => {
+				setWarnings(data)
+				setUpdatedAt(new Date())
 			})
-			.then(setWarnings)
-			.catch((err) => setError(err.message))
+			.catch((err) => {
+				if (err.name !== 'AbortError') setError(err.message)
+			})
+
+		fetchJson('/api/stations', ctrl.signal)
+			.then(setStations)
+			.catch(() => {})
+
+		fetchJson('/api/observations', ctrl.signal)
+			.then((data) => setObsByStation(data?.stations ?? {}))
+			.catch(() => {})
+
+		return () => ctrl.abort()
+	}, [reloadKey])
+
+	const retry = useCallback(() => {
+		setError(null)
+		setWarnings(null)
+		setReloadKey((k) => k + 1)
 	}, [])
 
-	if (error !== null) {
+	const warningsByArea = useMemo(
+		() => (warnings ? groupByArea(warnings) : new Map()),
+		[warnings]
+	)
+
+	const orderedGroups = useMemo(() => {
+		// Render in canonical N→S order (IPMA_AREA_CODES). Unknown codes
+		// (islands, future additions) get appended in insertion order at the end.
+		const seen = new Set()
+		const groups = []
+		for (const code of IPMA_AREA_CODES) {
+			const list = warningsByArea.get(code)
+			if (!list) continue
+			seen.add(code)
+			groups.push({ code, name: IPMA_AREAS[code].name, warnings: list })
+		}
+		for (const [code, list] of warningsByArea) {
+			if (seen.has(code)) continue
+			groups.push({ code, name: code, warnings: list })
+		}
+		return groups
+	}, [warningsByArea])
+
+	if (error) {
 		return (
 			<Layout>
-				<div className="mt-6">
-					<Heading className="p-3 text-center">Erro a carregar avisos</Heading>
-					<p className="text-center text-sm text-gray-500 p-2">{error}</p>
-				</div>
+				<StateError message={error} onRetry={retry} />
 			</Layout>
 		)
 	}
@@ -114,43 +98,38 @@ export default function IndexPage() {
 	if (warnings === null) {
 		return (
 			<Layout>
-				<div className="mt-6">
-					<Heading className="p-3 text-center">A procurar avisos ativos...</Heading>
-					<div className="fa-3x text-center">
-						<i className="fas fa-spinner fa-spin" />
-					</div>
-				</div>
+				<StateLoading />
 			</Layout>
 		)
 	}
 
 	if (warnings.length === 0) {
 		return (
-			<Layout>
-				<div className="mt-6">
-					<Heading className="p-3 text-center">Sem Avisos!</Heading>
-				</div>
+			<Layout updatedAt={updatedAt}>
+				<StateEmpty />
 			</Layout>
 		)
 	}
 
-	const groups = groupByArea(warnings)
-
 	return (
-		<Layout>
-			{groups.map((group) => (
-				<div key={group.id} className="mt-6">
-					<Heading className="p-3 text-center">{group.name}</Heading>
-					<div className="grid p-6">
-						{group.items.map((w, i) => (
-							<WarningCard
-								key={`${w.awarenessTypeName}-${w.startTime}-${i}`}
-								warning={w}
-							/>
-						))}
-					</div>
-				</div>
-			))}
+		<Layout updatedAt={updatedAt}>
+			<DistrictOverview warningsByArea={warningsByArea} />
+			{orderedGroups.map((group) => {
+				const station = nearestStationWithObs(
+					areaCentroid(group.code),
+					stations,
+					obsByStation
+				)
+				return (
+					<DistrictGroup
+						key={group.code}
+						id={group.code}
+						name={group.name}
+						warnings={group.warnings}
+						station={station}
+					/>
+				)
+			})}
 		</Layout>
 	)
 }
