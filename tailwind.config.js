@@ -12,17 +12,14 @@ export default {
 			screens: {
 				xs: '420px',
 			},
-		},
-		colors: {
-			inherit: 'inherit',
-			transparent: 'transparent',
-			current: 'currentColor',
-			black: '#000',
-			white: '#fff',
-			gray: colors.slate,
-			primary: colors.indigo,
-			secondary: colors.rose,
-			tertiary: colors.teal,
+			// Extend (not replace) the default palette so red/orange/yellow/green
+			// stay available — the warning UI depends on them.
+			colors: {
+				gray: colors.slate,
+				primary: colors.indigo,
+				secondary: colors.rose,
+				tertiary: colors.teal,
+			},
 		},
 	},
 	plugins: [],
