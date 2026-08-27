@@ -11,7 +11,8 @@ import {
 import 'leaflet/dist/leaflet.css'
 
 import MapLegend from './MapLegend.jsx'
-import { codeFromDisName } from '../../data/ipmaAreas.js'
+import { IPMA_AREAS, codeFromContinentalName } from '../../data/ipmaAreas.js'
+import { codeForFeature } from '../../data/islandConcelhos.js'
 import { LEVELS, levelMeta, worstLevelId } from '../../data/levels.js'
 import { warningTypeMeta } from '../../data/warningTypes.js'
 import {
@@ -22,9 +23,6 @@ import {
 	formatWind,
 } from '../../utils/format.js'
 
-const PT_CENTER = [39.6, -8.2]
-const PT_ZOOM = 7
-
 function esc(str) {
 	return String(str ?? '')
 		.replace(/&/g, '&amp;')
@@ -33,9 +31,9 @@ function esc(str) {
 		.replace(/"/g, '&quot;')
 }
 
-function districtPopupHtml(name, warnings) {
+function districtPopupHtml(title, warnings) {
 	if (!warnings || warnings.length === 0) {
-		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(name)}</p><p class="text-xs text-gray-500 mt-1 mb-0">Sem avisos em vigor.</p></div>`
+		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(title)}</p><p class="text-xs text-gray-500 mt-1 mb-0">Sem avisos em vigor.</p></div>`
 	}
 	const items = warnings
 		.map((w) => {
@@ -55,55 +53,51 @@ function districtPopupHtml(name, warnings) {
 		.join('')
 	return `
 		<div class="min-w-[240px] max-w-[280px]">
-			<p class="font-bold text-gray-900 m-0 mb-2">${esc(name)}</p>
+			<p class="font-bold text-gray-900 m-0 mb-2">${esc(title)}</p>
 			<ul class="list-none m-0 p-0 space-y-2">${items}</ul>
 		</div>
 	`
 }
 
 function districtStyle(feature, warningsByCode) {
-	const disName = feature.properties.dis_name
-	const code = codeFromDisName(disName)
+	const code = codeForFeature(feature, codeFromContinentalName)
 	const list = code ? warningsByCode.get(code) : null
 	const worst = list ? worstLevelId(list) : null
 	const fill = worst ? LEVELS[worst].fill : '#ffffff'
-	const opacity = worst ? 0.55 : 0.15
 	return {
 		fillColor: fill,
-		fillOpacity: opacity,
+		fillOpacity: worst ? 0.55 : 0.15,
 		color: worst ? LEVELS[worst].fill : '#94a3b8',
 		weight: worst ? 1 : 0.5,
 		opacity: worst ? 0.9 : 0.5,
 	}
 }
 
-function StationMarker({ feature, obs }) {
-	const props = feature.properties
-	const [lng, lat] = feature.geometry.coordinates
-	const id = String(props.idEstacao)
-	const stationObs = obs[id]
+function DistrictLayer({ geojson, warningsByCode }) {
+	const style = useMemo(
+		() => (feature) => districtStyle(feature, warningsByCode),
+		[warningsByCode]
+	)
+	const onEachFeature = useMemo(
+		() => (feature, layer) => {
+			const code = codeForFeature(feature, codeFromContinentalName)
+			const list = code ? warningsByCode.get(code) : null
+			const title = code
+				? IPMA_AREAS[code]?.name ?? feature.properties.con_name
+				: feature.properties.con_name
+			layer.bindPopup(districtPopupHtml(title, list))
+		},
+		[warningsByCode]
+	)
+	// Force re-render when the warnings set changes (react-leaflet's GeoJSON
+	// caches the style function otherwise).
+	const key = useMemo(() => {
+		const parts = []
+		for (const [code, list] of warningsByCode) parts.push(`${code}:${list.length}`)
+		return parts.sort().join('|')
+	}, [warningsByCode])
 	return (
-		<CircleMarker
-			center={[lat, lng]}
-			radius={5}
-			pathOptions={{
-				color: '#1d4ed8',
-				weight: 1.5,
-				fillColor: '#3b82f6',
-				fillOpacity: 0.8,
-			}}
-		>
-			<Popup>
-				<div className="min-w-[180px]">
-					<p className="font-semibold text-gray-900 m-0">{props.localEstacao}</p>
-					{stationObs ? (
-						<ObservationList obs={stationObs} />
-					) : (
-						<p className="text-xs text-gray-500 mt-1 mb-0">Sem leituras nesta hora.</p>
-					)}
-				</div>
-			</Popup>
-		</CircleMarker>
+		<GeoJSON key={key} data={geojson} style={style} onEachFeature={onEachFeature} />
 	)
 }
 
@@ -129,34 +123,61 @@ function ObservationList({ obs }) {
 	)
 }
 
-// Rebuild the GeoJSON layer whenever warnings change (Leaflet doesn't re-run
-// styleFn otherwise). Cheap enough — the geometry is already parsed.
-function DistrictLayer({ geojson, warningsByCode }) {
-	const style = useMemo(
-		() => (feature) => districtStyle(feature, warningsByCode),
-		[warningsByCode]
-	)
-	const onEachFeature = useMemo(
-		() => (feature, layer) => {
-			const disName = feature.properties.dis_name
-			const code = codeFromDisName(disName)
-			const list = code ? warningsByCode.get(code) : null
-			layer.bindPopup(districtPopupHtml(disName, list))
-		},
-		[warningsByCode]
-	)
-	// Force re-render (react-leaflet's GeoJSON caches the style otherwise).
-	const key = useMemo(() => {
-		const parts = []
-		for (const [code, list] of warningsByCode) parts.push(`${code}:${list.length}`)
-		return parts.sort().join('|')
-	}, [warningsByCode])
+function StationMarker({ feature, obs }) {
+	const props = feature.properties
+	const [lng, lat] = feature.geometry.coordinates
+	const id = String(props.idEstacao)
+	const stationObs = obs[id]
 	return (
-		<GeoJSON key={key} data={geojson} style={style} onEachFeature={onEachFeature} />
+		<CircleMarker
+			center={[lat, lng]}
+			radius={5}
+			pathOptions={{
+				color: '#1d4ed8',
+				weight: 1.5,
+				fillColor: '#3b82f6',
+				fillOpacity: 0.8,
+			}}
+		>
+			<Popup>
+				<div className="min-w-[180px]">
+					<p className="font-semibold text-gray-900 m-0">{props.localEstacao}</p>
+					{stationObs ? (
+						<ObservationList obs={stationObs} />
+					) : (
+						<p className="text-xs text-gray-500 mt-1 mb-0">
+							Sem leituras nesta hora.
+						</p>
+					)}
+				</div>
+			</Popup>
+		</CircleMarker>
 	)
 }
 
-export default function WarningsMap({ geojson, warnings, stations, observations }) {
+function inBounds(coords, bounds) {
+	if (!bounds) return true
+	const [lng, lat] = coords
+	return (
+		lat >= bounds.latMin &&
+		lat <= bounds.latMax &&
+		lng >= bounds.lngMin &&
+		lng <= bounds.lngMax
+	)
+}
+
+export default function WarningsMap({
+	geojson,
+	warnings,
+	stations,
+	observations,
+	center,
+	zoom,
+	bounds,
+	height = 'h-[75vh] min-h-[500px]',
+	showLegend = true,
+	stationsChecked = false,
+}) {
 	const warningsByCode = useMemo(() => {
 		const map = new Map()
 		for (const w of warnings) {
@@ -167,20 +188,21 @@ export default function WarningsMap({ geojson, warnings, stations, observations 
 		return map
 	}, [warnings])
 
+	const filteredStations = useMemo(
+		() => stations.filter((f) => inBounds(f.geometry?.coordinates, bounds)),
+		[stations, bounds]
+	)
+
 	const mapRef = useRef(null)
-	// Prevents the map from rendering blank when the container becomes visible
-	// after being mounted inside `display:none` or a modal.
 	useEffect(() => {
-		if (mapRef.current) {
-			mapRef.current.invalidateSize()
-		}
+		if (mapRef.current) mapRef.current.invalidateSize()
 	}, [])
 
 	return (
-		<div className="relative w-full h-[75vh] min-h-[500px]">
+		<div className={`relative w-full ${height}`}>
 			<MapContainer
-				center={PT_CENTER}
-				zoom={PT_ZOOM}
+				center={center}
+				zoom={zoom}
 				scrollWheelZoom
 				className="w-full h-full"
 				ref={mapRef}
@@ -190,14 +212,14 @@ export default function WarningsMap({ geojson, warnings, stations, observations 
 					url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 				/>
 				<LayersControl position="topleft">
-					<LayersControl.Overlay checked name="Avisos por distrito">
+					<LayersControl.Overlay checked name="Avisos por região">
 						<LayerGroup>
 							<DistrictLayer geojson={geojson} warningsByCode={warningsByCode} />
 						</LayerGroup>
 					</LayersControl.Overlay>
-					<LayersControl.Overlay name="Estações meteorológicas">
+					<LayersControl.Overlay checked={stationsChecked} name="Estações meteorológicas">
 						<LayerGroup>
-							{stations.map((f) => (
+							{filteredStations.map((f) => (
 								<StationMarker
 									key={f.properties.idEstacao}
 									feature={f}
@@ -208,7 +230,7 @@ export default function WarningsMap({ geojson, warnings, stations, observations 
 					</LayersControl.Overlay>
 				</LayersControl>
 			</MapContainer>
-			<MapLegend />
+			{showLegend && <MapLegend />}
 		</div>
 	)
 }

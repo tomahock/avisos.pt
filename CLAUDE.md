@@ -47,13 +47,14 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 
 - `src/main.jsx` — routes `/` (eager) and `/mapa` (lazy). The map bundle (Leaflet + GeoJSONs + map components) only loads when a visitor hits `/mapa`.
 - `src/pages/index.jsx` — chip overview + district groups.
-- `src/pages/mapa.jsx` — fetches warnings + stations + obs + geojson in parallel, renders `<WarningsMap>`.
-- `src/components/warnings/*` — cards, groups, overview chips, observation strip, state components.
-- `src/components/map/WarningsMap.jsx` — Leaflet map with `<GeoJSON>` district layer (colored by warning) and toggleable `<CircleMarker>` station layer.
+- `src/pages/mapa.jsx` — fetches warnings + stations + obs + both GeoJSONs in parallel and renders **three** `<WarningsMap>` instances: continental (big, full-width), Açores (side, filtered feature collection + bbox), Madeira (side).
+- `src/components/warnings/*` — cards, groups, overview chips (three sections: continental, Açores, Madeira), observation strip, state components.
+- `src/components/map/WarningsMap.jsx` — region-aware Leaflet map: takes `center/zoom/bounds/geojson/height`, filters stations by bbox, colors polygons per feature via `codeForFeature()`.
 - `src/components/map/MapLegend.jsx` — overlay legend.
 - `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/` and `/mapa`.
 - `src/data/`:
-  - `ipmaAreas.js` — `IPMA_AREAS` (18 continental districts with centroids) + `IPMA_CODE_BY_NAME` (reverse lookup for the CAOP `dis_name` → IPMA code). Island codes not yet mapped.
+  - `ipmaAreas.js` — `IPMA_AREAS` (25 codes total: 18 continental + AOC/ACE/AOR + MCN/MCS/MRM/MPS) each with `name`/`chip`/`lat`/`lng`/`region`. `CONTINENTAL_CODES`, `ACORES_CODES`, `MADEIRA_CODES` slice by region. `codeFromContinentalName(disName)` resolves the CAOP `dis_name` for continental only.
+  - `islandConcelhos.js` — `codeForFeature(feature, continentalResolver)` — for continental features it delegates to `dis_name` lookup; for island features it uses `con_name` → island subregion (per-concelho table). `MRM` (Madeira mountain zone) crosses concelho boundaries and is deliberately not mapped to polygons — MRM warnings still surface in the list/popups but don't get a colored polygon.
   - `levels.js` — `LEVELS` with `priority`, Tailwind class strings, **and `fill` hex** (Leaflet needs raw hex, not class names). `worstLevelId()` picks the worst level for a district.
   - `warningTypes.js` — `awarenessTypeName` → FA icon + friendly label.
 - `src/utils/`:
@@ -71,7 +72,10 @@ Two files in `public/data/`:
 
 Source: [FrancisPais/geojson-portugal-continental](https://github.com/FrancisPais/geojson-portugal-continental) + [FrancisPais/geojson-portugal-arquipelagos](https://github.com/FrancisPais/geojson-portugal-arquipelagos) — "simplificado" variants (polygons already reduced). Combined ~790 KB uncompressed, gzip ≈ 240 KB, only fetched when the visitor hits `/mapa`.
 
-The map colors polygons at municipality granularity but uses `dis_name → IPMA code → worst warning level` — all municipalities of the same district get the same color. If a warning is for a district whose name doesn't exist in the GeoJSON, the polygon stays white/transparent.
+Polygon coloring:
+- **Continental**: `feature.properties.dis_name` → IPMA code → worst warning. All municipalities of the same district share the color.
+- **Açores**: `feature.properties.con_name` → island group code (AOC/ACE/AOR) via `islandConcelhos.js`. Concelhos on the same island group share the color.
+- **Madeira**: same mechanism → MCN (Costa Norte: Porto Moniz, São Vicente, Santana), MCS (Costa Sul: everything else on the main island), MPS (Porto Santo). MRM (Regiões Montanhosas) doesn't map to concelho boundaries — MRM warnings surface in the list but not on the map.
 
 ### District → nearest station correlation
 
@@ -119,9 +123,8 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 
 ## Not yet implemented
 
-- **Islands (Madeira, Açores) warnings**: FogosPT's IPMA codes for island regions aren't yet known — the map draws them as neutral polygons and any warning that references an unknown code appears at the bottom of the list without a chip/color. Add entries to `IPMA_AREAS` when real codes surface.
-- **Real district polygons for islands**: the GeoJSON gives one big blob per archipelago (Açores/Madeira) rather than per IPMA sub-region. Would need a different data source to fix.
-- **Filters** (by district/type/level), **PWA/offline**, **dark mode**, **push notifications**, **history/archive**, **RSS**, **proper OG image**.
+- **MRM polygon coloring**: Madeira's mountain warning zone crosses concelho boundaries; MRM warnings are surfaced textually but the map doesn't draw an MRM-colored region. A concelho-independent overlay would need a different data source.
+- **Filters** (by district/type/level), **PWA/offline**, **dark mode**, **push notifications**, **history/archive**, **RSS**, **proper 1200×630 OG image**.
 
 ## Parent workspace note
 
