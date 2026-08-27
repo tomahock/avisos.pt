@@ -8,12 +8,8 @@ import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
 import { IPMA_AREAS, IPMA_AREA_CODES, areaCentroid } from '../data/ipmaAreas.js'
 import { nearestStationWithObs } from '../utils/geo.js'
-
-async function fetchJson(url, signal) {
-	const res = await fetch(url, { signal })
-	if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`)
-	return res.json()
-}
+import { fetchJson } from '../utils/fetchJson.js'
+import { usePageTitle } from '../utils/pageTitle.js'
 
 function groupByArea(warnings) {
 	const map = new Map()
@@ -26,6 +22,8 @@ function groupByArea(warnings) {
 }
 
 export default function IndexPage() {
+	usePageTitle()
+
 	const [warnings, setWarnings] = useState(null)
 	const [stations, setStations] = useState([])
 	const [obsByStation, setObsByStation] = useState({})

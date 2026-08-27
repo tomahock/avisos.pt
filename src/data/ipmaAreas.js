@@ -1,7 +1,9 @@
 // IPMA area-of-warning codes → district metadata.
-// Continental Portugal (18 distritos) confirmed. Island codes not yet mapped.
+// Continental Portugal (18 distritos) confirmed. Islands: FogosPT doesn't yet
+// use codes we've observed for Açores / Madeira; the map colors them via
+// `dis_name` fallback below when a warning references a code we later map here.
 // `lat`/`lng` are approximate centroids (district capital), used only to find
-// the nearest weather station via haversine distance — precision doesn't matter.
+// the nearest weather station via haversine — precision doesn't matter.
 // Order in this object is the render order in the overview grid (roughly N→S).
 
 export const IPMA_AREAS = {
@@ -27,6 +29,12 @@ export const IPMA_AREAS = {
 
 export const IPMA_AREA_CODES = Object.keys(IPMA_AREAS)
 
+// Reverse lookup: district name (as it appears in the CAOP GeoJSON) → IPMA code.
+// Used by the map to color a polygon based on the warning for its district.
+export const IPMA_CODE_BY_NAME = Object.fromEntries(
+	Object.entries(IPMA_AREAS).map(([code, { name }]) => [name, code])
+)
+
 export function areaName(code) {
 	return IPMA_AREAS[code]?.name ?? code
 }
@@ -35,4 +43,8 @@ export function areaCentroid(code) {
 	const a = IPMA_AREAS[code]
 	if (!a) return null
 	return { lat: a.lat, lng: a.lng }
+}
+
+export function codeFromDisName(disName) {
+	return IPMA_CODE_BY_NAME[disName] ?? null
 }
