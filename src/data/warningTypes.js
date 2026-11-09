@@ -19,3 +19,21 @@ const FALLBACK = { icon: 'fa-triangle-exclamation', label: null }
 export function warningTypeMeta(name) {
 	return TYPE_META[name] ?? { ...FALLBACK, label: name }
 }
+
+// Display order for warning types — same as IPMA's own legend, so people
+// coming from there feel at home. Unknown types sort last.
+const TYPE_ORDER = [
+	'Trovoada',
+	'Agitação Marítima',
+	'Precipitação',
+	'Vento',
+	'Neve',
+	'Tempo Frio',
+	'Tempo Quente',
+	'Nevoeiro',
+]
+
+export function typeRank(name) {
+	const i = TYPE_ORDER.indexOf(name)
+	return i === -1 ? TYPE_ORDER.length : i
+}

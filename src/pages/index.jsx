@@ -10,6 +10,7 @@ import { IPMA_AREAS, IPMA_AREA_CODES, areaCentroid } from '../data/ipmaAreas.js'
 import { nearestStationWithObs } from '../utils/geo.js'
 import { fetchJson } from '../utils/fetchJson.js'
 import { usePageTitle } from '../utils/pageTitle.js'
+import { DEFAULT_META } from '../utils/share.js'
 
 function groupByArea(warnings) {
 	const map = new Map()
@@ -22,7 +23,7 @@ function groupByArea(warnings) {
 }
 
 export default function IndexPage() {
-	usePageTitle()
+	usePageTitle(DEFAULT_META.title, { description: DEFAULT_META.description })
 
 	const [warnings, setWarnings] = useState(null)
 	const [stations, setStations] = useState([])

@@ -1,3 +1,7 @@
 # Copy to `.dev.vars` and fill in. Consumed by `wrangler pages dev`.
 # Get a key at https://fogos.pt/pt/api
 FOGOS_API_KEY=
+
+# Optional, local only: point the functions at a mock FogosPT server
+# (e.g. FOGOS_API_BASE=http://localhost:4567). Never set it in CF.
+# FOGOS_API_BASE=

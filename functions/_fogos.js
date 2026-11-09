@@ -3,6 +3,12 @@
 // https://fogos.pt/pt/api (X-API-Key + identifiable User-Agent).
 
 const BASE = 'https://api.fogos.pt'
+
+// FOGOS_API_BASE is a local-dev escape hatch (point wrangler at a mock
+// server); never set it in the CF dashboard.
+function baseUrl(env) {
+	return env.FOGOS_API_BASE || BASE
+}
 const USER_AGENT = 'AvisosPT/1.0 (+https://avisos.pt)'
 const TIMEOUT_MS = 30_000
 
@@ -29,7 +35,7 @@ export async function proxyFogos({ env, path, cacheSeconds, transform, label = p
 
 	let upstream
 	try {
-		upstream = await fetch(BASE + path, {
+		upstream = await fetch(baseUrl(env) + path, {
 			headers: {
 				'X-API-Key': key,
 				'User-Agent': USER_AGENT,
@@ -70,4 +76,23 @@ export async function proxyFogos({ env, path, cacheSeconds, transform, label = p
 	}
 
 	return jsonResponse(transform(data), 200, cacheHeader)
+}
+
+/**
+ * Fetch a FogosPT endpoint and return the parsed JSON (for server-side use
+ * by the SEO middleware / OG images, not proxied to the browser). Throws on
+ * any failure so callers can fall back to generic content.
+ */
+export async function fetchFogosJson(env, path) {
+	if (!env.FOGOS_API_KEY) throw new Error('missing_api_key')
+	const res = await fetch(baseUrl(env) + path, {
+		headers: {
+			'X-API-Key': env.FOGOS_API_KEY,
+			'User-Agent': USER_AGENT,
+			Accept: 'application/json',
+		},
+		signal: AbortSignal.timeout(10_000),
+	})
+	if (!res.ok) throw new Error(`upstream_${res.status}`)
+	return res.json()
 }

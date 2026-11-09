@@ -13,6 +13,7 @@ import {
 import { LEVELS } from '../data/levels.js'
 import { warningTypeMeta } from '../data/warningTypes.js'
 import { usePageTitle } from '../utils/pageTitle.js'
+import { PAGE_META } from '../utils/share.js'
 
 const LEVEL_IDS = ['yellow', 'orange', 'red']
 
@@ -240,7 +241,9 @@ function formatConsulted(iso) {
 }
 
 export default function CriteriosPage() {
-	usePageTitle('Critérios de emissão de avisos · Avisos.pt')
+	usePageTitle(`${PAGE_META['/criterios'].title} · Avisos.pt`, {
+		description: PAGE_META['/criterios'].description,
+	})
 
 	const [searchParams, setSearchParams] = useSearchParams()
 	const region =

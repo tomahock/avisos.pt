@@ -4,16 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-React 18 SPA (Vite + Tailwind 3 + react-router 6) that renders the currently active weather warnings for Portugal continental. Four views:
+React 18 SPA (Vite + Tailwind 3 + react-router 6) that renders the currently active weather warnings for Portugal continental. Views:
 
 - `/` — chip overview + district groups with cards
 - `/cronologia` — hour-by-hour timeline (IPMA-style grid, but local time): overview matrix region × hour, or `?d=<IPMA code>` for one row per warning type + chronological list
+- `/distrito/<slug>` — one page per IPMA area (25): worst level, observations, timeline, warning cards, share buttons, links to every other area
+- `/distrito/<slug>/aviso/<tipo>-<AAAAMMDD-HHMM>` — one page per warning (shareable permalink; `noindex` because warnings expire — the page says "terminado" once FogosPT drops it)
 - `/criterios` — IPMA warning-emission criteria (static, no API): colour meanings, thresholds per type for Continente/Madeira/Açores (`?regiao=`), Tempo Quente/Frio per district
 - `/mapa` — Leaflet map with district polygons colored by warning level + toggleable weather station markers. Period picker (Agora / Hoje / Amanhã / next days, `?dia=<offset>`) filters what the polygons and popups show
 
 Deployed as a static site on **Cloudflare Pages** at https://avisos.pt.
 
-Three Cloudflare Pages Functions under `functions/api/` proxy the [FogosPT API](https://fogos.pt/pt/api) so the API key never touches the browser.
+Three Cloudflare Pages Functions under `functions/api/` proxy the [FogosPT API](https://fogos.pt/pt/api) so the API key never touches the browser. Two more serve SEO/sharing: `functions/_middleware.js` (server-side `<head>`) and `functions/og/[[path]].js` (share-card PNGs).
 
 ## Commands
 
@@ -30,7 +32,9 @@ npm run lint
 
 ## Deploy
 
-Cloudflare Pages builds this repo from git. Framework preset **Vite**, build command `npm run build`, output directory `dist`, Node ≥ 18. Pushing to the deploy branch is a production action — confirm before pushing if the user hasn't already asked.
+Cloudflare Pages builds this repo from git. Framework preset **Vite**, build command `npm run build`, output directory `dist`, Node ≥ 18.
+
+`wrangler.toml` (name, `pages_build_output_dir`, `compatibility_date`) is the **source of truth** for those settings — the dashboard can't edit them while it exists. The compat date must stay ≥ 2022-11-30: `workers-og` needs the `ReadableStream` constructor, and on an older date every `/og/*` request fails with error 1101. Bumping the date changes runtime behaviour for all functions — check a preview deploy first. Pushing to the deploy branch is a production action — confirm before pushing if the user hasn't already asked.
 
 **Required secret**: `FOGOS_API_KEY` in the CF Pages dashboard for Production **and** Preview. If missing, all `/api/*` endpoints return `500 {"error":"missing_api_key"}` — the proxy fails loud on purpose (no silent fallback).
 
@@ -45,14 +49,25 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `functions/api/stations.js` → `/v2/weather/stations/ipma`, 1 h cache (catalog rarely changes).
 - `functions/api/observations.js` → `/v2/weather/observations`, 10 min cache. **Trims to the latest hour server-side** — upstream returns 24 h × ~100 stations (~1 MB); we return `{ hour, stations }` for just the most recent hour.
 
+- `functions/_warnings.js` — `getWarnings(env)`: server-side warnings list (Cache API, 5 min) for the two functions below. `_fogos.js` exports `fetchFogosJson()` for it; `FOGOS_API_BASE` env overrides the upstream host (local mock only).
+- `functions/_middleware.js` — **the SPA is client-rendered but share bots don't run JS**, so every HTML response gets its `<title>`, description, canonical, robots, `og:*`, `twitter:*` and BreadcrumbList JSON-LD rewritten per route with `HTMLRewriter`. Unknown `/distrito/*` → 404. Any failure falls back to the static head — never blocks the page. Skips `/api/`, `/og/` and anything with a file extension.
+- `functions/og/[[path]].js` — 1200×630 PNG cards via `workers-og` (satori + resvg wasm, ~720 KB compressed in the functions bundle): `/og/site.png`, `/og/distrito/<slug>.png`, `/og/aviso/<slug>/<id>.png`. Fonts: Fira Sans latin subset fetched from jsDelivr (no arrows — use `–`). Satori: every multi-child `<div>` needs `display:flex`. The middleware appends `?v=<hash of the warnings>` so social networks refetch when warnings change. Cached 10 min.
+
+### Shared server/client code
+
+- `src/utils/share.js` — imported by the browser **and** the functions: `SITE_URL`, `PAGE_META`/`DEFAULT_META` (static route titles/descriptions), `districtPath`, `warningSlug`/`warningPath`/`findWarning`, `districtSeo`/`warningSeo` (title + description), `formatLisbon` (always Europe/Lisbon, built from numeric parts so server and browser ICU agree), `warningsVersion`, `sortWarnings`. Keep it DOM/React-free.
+- Area slugs live in `ipmaAreas.js` (`slug`, `codeFromSlug`) and are a **URL contract** — never rename.
+- Warning ids = `slugify(type)-YYYYMMDD-HHMM` straight from the `startTime` string (no Date parsing). A level change on the same window keeps the URL.
+
 ### Client side
 
-- `src/main.jsx` — routes `/` (eager), `/cronologia`, `/mapa` and `/criterios` (lazy). The map bundle (Leaflet + GeoJSONs + map components) only loads when a visitor hits `/mapa`.
+- `src/main.jsx` — routes `/` (eager), `/cronologia`, `/mapa`, `/criterios`, `/distrito/:slug`, `/distrito/:slug/aviso/:id` (lazy). The map bundle (Leaflet + GeoJSONs + map components) only loads when a visitor hits `/mapa`.
 - `src/pages/index.jsx` — chip overview + district groups.
 - `src/pages/mapa.jsx` — fetches warnings + stations + obs + both GeoJSONs in parallel and renders **three** `<WarningsMap>` instances: continental (big, full-width), Açores (side, filtered feature collection + bbox), Madeira (side).
 - `src/pages/cronologia.jsx` — area picker + `<TimelineGrid>`. Selected area lives in the URL (`?d=LSB`) so it's linkable.
 - `src/components/timeline/TimelineGrid.jsx` — fixed label column + horizontally scrolling track (`CELL` = 24 px/hour). Per-hour worst level is collapsed into contiguous runs drawn as bars; hover/tap a column → inspector strip at the top. Midnight lines + "agora" marker are overlays.
 - `src/utils/timeline.js` — hour window (current hour → last `endTime`, clamped 48–96 h; no past since upstream drops ended warnings), `worstAt`, day grouping/labels, "começa/termina em".
+- `src/pages/distrito.jsx`, `src/pages/aviso.jsx` + `src/components/district/*` (Breadcrumb, DistrictTimeline, OtherAreas) + `src/components/share/ShareButtons.jsx` (native share / WhatsApp / Facebook / X / copy) + `src/hooks/{useWarningsData,useNow}.js`.
 - `src/components/warnings/*` — cards, groups, overview chips (three sections: continental, Açores, Madeira), observation strip, state components.
 - `src/components/map/WarningsMap.jsx` — region-aware Leaflet map: takes `center/zoom/bounds/geojson/height`, filters stations by bbox, colors polygons per feature via `codeForFeature()`.
 - `src/components/map/MapLegend.jsx` — overlay legend.
@@ -68,7 +83,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
   - `fetchJson.js` — throws on non-2xx.
   - `geo.js` — haversine + nearest-station-with-observations.
   - `format.js` — `parseWarningTime`/`formatWhen` (Lisbon → instant → visitor-local), `-99` sentinel filter, temp/wind/humidity/precip/timestamp formatters, `relativeMinutes`.
-  - `pageTitle.js` — `usePageTitle(title)` hook.
+  - `pageTitle.js` — `usePageTitle(title, { description, robots })`: syncs title/description/canonical/og on client-side navigation (first paint comes from the middleware).
 
 ### GeoJSON assets
 
@@ -114,9 +129,9 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 
 ## SEO artifacts
 
-- `index.html` has description, canonical, Open Graph, Twitter card, `WebSite` JSON-LD, preconnect to fonts. **`og:image` points to `/imgs/logo.png` as a fallback** — replace with a proper 1200×630 social image when one exists.
+- `index.html` has description, canonical, Open Graph, Twitter card, `WebSite` JSON-LD, preconnect to fonts. These are the **fallback** values — `functions/_middleware.js` rewrites them per route in production (and `og:image` to a generated `/og/*.png`). Plain `npm run dev` shows the fallbacks.
 - `public/robots.txt` — allows everything except `/api/`, points to sitemap.
-- `public/sitemap.xml` — lists `/`, `/cronologia`, `/mapa` and `/criterios`.
+- `public/sitemap.xml` — lists `/`, `/cronologia`, `/mapa`, `/criterios` and the 25 `/distrito/<slug>` pages (warning pages are ephemeral and not listed).
 - Per-page `<title>` via `usePageTitle()` in each page component.
 
 ## Style
@@ -131,7 +146,7 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 ## Not yet implemented
 
 - **MRM polygon coloring**: Madeira's mountain warning zone crosses concelho boundaries; MRM warnings are surfaced textually but the map doesn't draw an MRM-colored region. A concelho-independent overlay would need a different data source.
-- **Filters** (by district/type/level), **PWA/offline**, **dark mode**, **push notifications**, **history/archive**, **RSS**, **proper 1200×630 OG image**.
+- **Filters** (by district/type/level), **PWA/offline**, **dark mode**, **push notifications**, **history/archive**, **RSS**.
 
 ## Parent workspace note
 

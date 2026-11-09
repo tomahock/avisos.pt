@@ -10,6 +10,8 @@ import IndexPage from './pages/index.jsx'
 const MapPage = lazy(() => import('./pages/mapa.jsx'))
 const CronologiaPage = lazy(() => import('./pages/cronologia.jsx'))
 const CriteriosPage = lazy(() => import('./pages/criterios.jsx'))
+const DistritoPage = lazy(() => import('./pages/distrito.jsx'))
+const AvisoPage = lazy(() => import('./pages/aviso.jsx'))
 
 createRoot(document.getElementById('root')).render(
 	<StrictMode>
@@ -37,6 +39,22 @@ createRoot(document.getElementById('root')).render(
 					element={
 						<Suspense fallback={<div />}>
 							<CriteriosPage />
+						</Suspense>
+					}
+				/>
+				<Route
+					path="/distrito/:slug"
+					element={
+						<Suspense fallback={<div />}>
+							<DistritoPage />
+						</Suspense>
+					}
+				/>
+				<Route
+					path="/distrito/:slug/aviso/:id"
+					element={
+						<Suspense fallback={<div />}>
+							<AvisoPage />
 						</Suspense>
 					}
 				/>

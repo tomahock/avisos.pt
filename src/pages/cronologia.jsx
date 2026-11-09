@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import Layout from '../layouts/index.jsx'
 import StateEmpty from '../components/warnings/StateEmpty.jsx'
@@ -15,10 +15,12 @@ import {
 	areaName,
 } from '../data/ipmaAreas.js'
 import { LEVELS, levelMeta, worstLevelId } from '../data/levels.js'
-import { warningTypeMeta } from '../data/warningTypes.js'
+import { typeRank, warningTypeMeta } from '../data/warningTypes.js'
+import { typeRows } from '../components/timeline/typeRows.js'
 import { fetchJson } from '../utils/fetchJson.js'
 import { formatWhen, parseWarningTime } from '../utils/format.js'
 import { usePageTitle } from '../utils/pageTitle.js'
+import { PAGE_META, districtPath } from '../utils/share.js'
 import {
 	buildHours,
 	durationHours,
@@ -30,23 +32,6 @@ const REGIONS = [
 	{ key: 'acores', title: 'Açores', codes: ACORES_CODES },
 	{ key: 'madeira', title: 'Madeira', codes: MADEIRA_CODES },
 ]
-
-// Same order as IPMA's own legend, so people coming from there feel at home.
-const TYPE_ORDER = [
-	'Trovoada',
-	'Agitação Marítima',
-	'Precipitação',
-	'Vento',
-	'Neve',
-	'Tempo Frio',
-	'Tempo Quente',
-	'Nevoeiro',
-]
-
-function typeRank(name) {
-	const i = TYPE_ORDER.indexOf(name)
-	return i === -1 ? TYPE_ORDER.length : i
-}
 
 function groupBy(list, key) {
 	const map = new Map()
@@ -176,7 +161,8 @@ export default function CronologiaPage() {
 	usePageTitle(
 		selected
 			? `Cronologia · ${areaName(selected)} · Avisos.pt`
-			: 'Cronologia · Avisos.pt'
+			: `${PAGE_META['/cronologia'].title} · Avisos.pt`,
+		{ description: PAGE_META['/cronologia'].description }
 	)
 
 	const [warnings, setWarnings] = useState(null)
@@ -250,20 +236,7 @@ export default function CronologiaPage() {
 		[selected, warningsByArea]
 	)
 
-	const districtRows = useMemo(() => {
-		const byType = groupBy(areaWarnings, 'awarenessTypeName')
-		return [...byType.keys()]
-			.sort((a, b) => typeRank(a) - typeRank(b))
-			.map((name) => {
-				const meta = warningTypeMeta(name)
-				return {
-					key: name,
-					label: meta.label ?? name,
-					icon: meta.icon,
-					warnings: byType.get(name),
-				}
-			})
-	}, [areaWarnings])
+	const districtRows = useMemo(() => typeRows(areaWarnings), [areaWarnings])
 
 	const sortedAreaWarnings = useMemo(
 		() =>
@@ -315,6 +288,11 @@ export default function CronologiaPage() {
 						<h1 className="text-2xl font-bold text-gray-900 tracking-tight">
 							{selected ? areaName(selected) : 'Cronologia dos avisos'}
 						</h1>
+						{selected && (
+							<Link to={districtPath(selected)} className="text-sm text-primary-700">
+								Página de {areaName(selected)} →
+							</Link>
+						)}
 						<p className="text-sm text-gray-500 mt-1">
 							{selected
 								? `${areaWarnings.length} ${areaWarnings.length === 1 ? 'aviso' : 'avisos'} nas próximas ${hours.length} horas`

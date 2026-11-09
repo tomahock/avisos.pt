@@ -1,0 +1,10 @@
+# Cloudflare Pages config — source of truth for the settings below (the
+# dashboard can no longer edit them while this file exists).
+# Secrets (FOGOS_API_KEY) stay in the dashboard, Production AND Preview.
+name = "avisos-pt"
+pages_build_output_dir = "dist"
+
+# Must stay >= 2022-11-30: workers-og (functions/og) uses the
+# ReadableStream constructor (streams_enable_constructors). Bumping it can
+# change runtime behaviour of every function — test on a preview first.
+compatibility_date = "2025-03-01"
