@@ -237,6 +237,7 @@ function DailySection({ id }) {
 				<StationChart
 					title="Precipitação por dia"
 					kind="bar"
+					gapUnit="dias"
 					showLatest={false}
 					points={pts.map((p) => ({ t: p.t, v: p.prec }))}
 					format={fmtMm}

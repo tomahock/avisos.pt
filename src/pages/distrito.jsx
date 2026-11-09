@@ -135,7 +135,7 @@ function District({ code }) {
 					<Link to="/criterios" className="text-primary-700">Critérios dos avisos</Link>
 				</p>
 
-				<DistrictStations code={code} name={area.name} catalog={stations} obs={obs} warnings={list} />
+				<DistrictStations code={code} name={area.name} catalog={stations} obs={obs} warnings={list} now={now} />
 
 				<OtherAreas current={code} warnings={warnings} />
 			</div>

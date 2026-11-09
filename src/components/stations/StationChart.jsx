@@ -1,4 +1,5 @@
 import { useWidth } from '../../hooks/useWidth.js'
+import { rainTotal } from '../../utils/stationMetrics.js'
 
 // Small-multiple chart for one measure of one station (one series → no
 // legend, the title names it). One hue for every chart; axis/labels in text
@@ -52,6 +53,8 @@ export default function StationChart({
 	// 'minmax' | 'max' | 'total' | null — extremes of the plotted period,
 	// shown next to the title. Default: minmax for line/range, total for bar.
 	stats,
+	// Unit for the coverage note of an incomplete total ('h' hourly, 'dias').
+	gapUnit = 'h',
 	hoverIdx = null,
 	onHover = () => {},
 }) {
@@ -128,7 +131,12 @@ export default function StationChart({
 		const vs = kind === 'range' ? null : points.map((p) => p.v).filter((v) => v != null)
 		const max = kind === 'range' ? Math.max(...points.map((p) => p.hi).filter((v) => v != null)) : Math.max(...vs)
 		const min = kind === 'range' ? Math.min(...points.map((p) => p.lo).filter((v) => v != null)) : Math.min(...vs)
-		if (mode === 'total') statsText = `total ${format(vs.reduce((a, v) => a + v, 0))}`
+		if (mode === 'total') {
+			// Missing readings are unknown, not zero: a total with gaps is a
+			// lower bound (same rule as the hourly summary and district cards).
+			const { total, missing } = rainTotal(points.map((p) => p.v))
+			statsText = missing > 0 ? `total ≥ ${format(total)} (${missing} ${gapUnit} sem dados)` : `total ${format(total)}`
+		}
 		else if (mode === 'max') statsText = `máx. ${format(max)}`
 		else statsText = `máx. ${format(max)} · mín. ${format(min)}`
 	}

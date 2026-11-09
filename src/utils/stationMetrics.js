@@ -57,3 +57,17 @@ export function defaultStationMetric(warnings, now = new Date()) {
 	}
 	return best ? { metric: METRIC_FOR_TYPE[best.awarenessTypeName], warning: best } : { metric: 'temperatura', warning: null }
 }
+
+// Sum of hourly rain with its coverage. Missing hours are unknown, not dry:
+// `total` is a lower bound whenever `missing > 0`, and null when no hour has a
+// reading at all.
+export function rainTotal(values) {
+	let total = 0
+	let measured = 0
+	for (const v of values) {
+		if (v == null) continue
+		total += v
+		measured++
+	}
+	return { total: measured ? total : null, measured, missing: values.length - measured }
+}
