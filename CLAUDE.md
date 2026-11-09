@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-React 18 SPA (Vite + Tailwind 3 + react-router 6) that renders the currently active weather warnings for Portugal continental. Three views:
+React 18 SPA (Vite + Tailwind 3 + react-router 6) that renders the currently active weather warnings for Portugal continental. Four views:
 
 - `/` — chip overview + district groups with cards
 - `/cronologia` — hour-by-hour timeline (IPMA-style grid, but local time): overview matrix region × hour, or `?d=<IPMA code>` for one row per warning type + chronological list
+- `/criterios` — IPMA warning-emission criteria (static, no API): colour meanings, thresholds per type for Continente/Madeira/Açores (`?regiao=`), Tempo Quente/Frio per district
 - `/mapa` — Leaflet map with district polygons colored by warning level + toggleable weather station markers. Period picker (Agora / Hoje / Amanhã / next days, `?dia=<offset>`) filters what the polygons and popups show
 
 Deployed as a static site on **Cloudflare Pages** at https://avisos.pt.
@@ -46,7 +47,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 
 ### Client side
 
-- `src/main.jsx` — routes `/` (eager), `/cronologia` and `/mapa` (lazy). The map bundle (Leaflet + GeoJSONs + map components) only loads when a visitor hits `/mapa`.
+- `src/main.jsx` — routes `/` (eager), `/cronologia`, `/mapa` and `/criterios` (lazy). The map bundle (Leaflet + GeoJSONs + map components) only loads when a visitor hits `/mapa`.
 - `src/pages/index.jsx` — chip overview + district groups.
 - `src/pages/mapa.jsx` — fetches warnings + stations + obs + both GeoJSONs in parallel and renders **three** `<WarningsMap>` instances: continental (big, full-width), Açores (side, filtered feature collection + bbox), Madeira (side).
 - `src/pages/cronologia.jsx` — area picker + `<TimelineGrid>`. Selected area lives in the URL (`?d=LSB`) so it's linkable.
@@ -56,11 +57,12 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `src/components/map/WarningsMap.jsx` — region-aware Leaflet map: takes `center/zoom/bounds/geojson/height`, filters stations by bbox, colors polygons per feature via `codeForFeature()`.
 - `src/components/map/MapLegend.jsx` — overlay legend.
 - `src/components/map/MapPeriodPicker.jsx` — period tabs for `/mapa`; each tab shows worst level + region count for its window. Periods come from `mapPeriods()` in `utils/timeline.js` ("Agora" = active this instant, then visitor-local calendar days up to the last `endTime`, max 5); filtering via `warningsInPeriod()`. Unknown/stale `?dia=` falls back to "Agora".
-- `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/`, `/cronologia` and `/mapa`.
+- `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/`, `/cronologia`, `/mapa` and `/criterios`.
 - `src/data/`:
   - `ipmaAreas.js` — `IPMA_AREAS` (25 codes total: 18 continental + AOC/ACE/AOR + MCN/MCS/MRM/MPS) each with `name`/`chip`/`lat`/`lng`/`region`. `CONTINENTAL_CODES`, `ACORES_CODES`, `MADEIRA_CODES` slice by region. `codeFromContinentalName(disName)` resolves the CAOP `dis_name` for continental only.
   - `islandConcelhos.js` — `codeForFeature(feature, continentalResolver)` — for continental features it delegates to `dis_name` lookup; for island features it uses `con_name` → island subregion (per-concelho table). `MRM` (Madeira mountain zone) crosses concelho boundaries and is deliberately not mapped to polygons — MRM warnings still surface in the list/popups but don't get a colored polygon.
   - `levels.js` — `LEVELS` with `priority`, Tailwind class strings, **and `fill` hex** (Leaflet needs raw hex, not class names). `worstLevelId()` picks the worst level for a district.
+  - `criterios.js` — IPMA criteria transcribed by hand from ipma.pt (`CRITERIA_SOURCE_URL`, consulted `CRITERIA_CONSULTED_AT`). Values stay as IPMA's strings (`"70 a 90"`, `"3 a 1"`) — don't numberify. **IPMA has no API for this**: when they revise the table, update this file and the date.
   - `warningTypes.js` — `awarenessTypeName` → FA icon + friendly label.
 - `src/utils/`:
   - `fetchJson.js` — throws on non-2xx.
@@ -114,7 +116,7 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 
 - `index.html` has description, canonical, Open Graph, Twitter card, `WebSite` JSON-LD, preconnect to fonts. **`og:image` points to `/imgs/logo.png` as a fallback** — replace with a proper 1200×630 social image when one exists.
 - `public/robots.txt` — allows everything except `/api/`, points to sitemap.
-- `public/sitemap.xml` — lists `/`, `/cronologia` and `/mapa`.
+- `public/sitemap.xml` — lists `/`, `/cronologia`, `/mapa` and `/criterios`.
 - Per-page `<title>` via `usePageTitle()` in each page component.
 
 ## Style
