@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { levelMeta } from '../../data/levels.js'
 import { warningTypeMeta } from '../../data/warningTypes.js'
+import TypeIcon from '../warnings/TypeIcon.jsx'
 import { parseWarningTime } from '../../utils/format.js'
 import {
 	dayLabel,
@@ -51,7 +52,7 @@ function Segment({ run, hours, warnings, mode }) {
 		const max = Math.floor((width - 8) / 16)
 		if (max >= 1) {
 			content = types.slice(0, max).map((t) => (
-				<i key={t} className={`fas ${warningTypeMeta(t).icon} text-[11px]`} aria-hidden />
+				<TypeIcon key={t} type={t} className="text-[11px]" />
 			))
 		}
 	} else if (width >= 64) {
@@ -115,7 +116,7 @@ function Inspector({ hour, isNow, rows }) {
 							{row.inspectorLabel ?? row.label}
 							<span className="text-gray-400 flex gap-1">
 								{types.map((t) => (
-									<i key={t} className={`fas ${warningTypeMeta(t).icon}`} title={t} aria-hidden />
+									<TypeIcon key={t} type={t} title={t} />
 								))}
 							</span>
 						</span>
@@ -130,7 +131,7 @@ function Inspector({ hour, isNow, rows }) {
  * Hour-by-hour warning timeline.
  *
  * rows: [{ type: 'section', key, label }
- *        | { key, label, icon?, warnings, onClick?, inspectorLabel? }]
+ *        | { key, label, iconType?, warnings, onClick?, inspectorLabel? }]
  * mode: 'types' shows type icons inside bars (overview), 'level' shows the
  *       level name (single-district view, one row per type).
  */
@@ -290,9 +291,7 @@ export default function TimelineGrid({ hours, rows, now, mode = 'level' }) {
 function RowLabel({ row }) {
 	const inner = (
 		<>
-			{row.icon && (
-				<i className={`fas ${row.icon} w-4 text-center text-gray-500`} aria-hidden />
-			)}
+			{row.iconType && <TypeIcon type={row.iconType} className="w-4 text-center text-gray-500" />}
 			<span className="truncate">{row.label}</span>
 		</>
 	)

@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 
 import Layout from '../layouts/index.jsx'
+import TypeIcon from '../components/warnings/TypeIcon.jsx'
 import {
 	CRITERIA_CONSULTED_AT,
 	CRITERIA_GUIDE_URL,
@@ -131,7 +132,7 @@ function TypeCard({ item }) {
 		<article className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 flex flex-col gap-3">
 			<header className="flex items-start gap-3">
 				<div className="shrink-0 w-10 h-10 rounded-lg bg-gray-900 text-white flex items-center justify-center">
-					<i className={`fas ${meta.icon}`} aria-hidden />
+					<TypeIcon type={item.type} />
 				</div>
 				<div className="min-w-0">
 					<h3 className="font-bold text-gray-900 leading-tight">{meta.label ?? item.type}</h3>

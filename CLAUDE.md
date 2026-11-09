@@ -87,7 +87,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
   - `islandConcelhos.js` — `codeForFeature(feature, continentalResolver)` — for continental features it delegates to `dis_name` lookup; for island features it uses `con_name` → island subregion (per-concelho table). `MRM` (Madeira mountain zone) crosses concelho boundaries and is deliberately not mapped to polygons — MRM warnings still surface in the list/popups but don't get a colored polygon.
   - `levels.js` — `LEVELS` with `priority`, Tailwind class strings, **and `fill` hex** (Leaflet needs raw hex, not class names). `worstLevelId()` picks the worst level for a district.
   - `criterios.js` — IPMA criteria transcribed by hand from ipma.pt (`CRITERIA_SOURCE_URL`, consulted `CRITERIA_CONSULTED_AT`). Values stay as IPMA's strings (`"70 a 90"`, `"3 a 1"`) — don't numberify. **IPMA has no API for this**: when they revise the table, update this file and the date.
-  - `warningTypes.js` — `awarenessTypeName` → FA icon + friendly label.
+  - `warningTypes.js` — `awarenessTypeName` → FA icon (or `emoji`, e.g. 🌊 Agitação Marítima — FA 6 has no wave) + friendly label. Always render through `<TypeIcon type=…>` (`components/warnings/TypeIcon.jsx`); the map's divIcon HTML handles `emoji` itself.
 - `src/utils/`:
   - `fetchJson.js` — throws on non-2xx.
   - `geo.js` — haversine + nearest-station-with-observations.

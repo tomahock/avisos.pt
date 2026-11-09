@@ -78,6 +78,20 @@ export default function DistrictStations({ code, name, catalog, obs, warnings, n
 		const { total, missing } = rain24(id)
 		return metric === 'chuva' && total != null && missing > 0 ? `${missing} h sem dados` : null
 	}
+	// 24 h extremes under the big value — bare numbers, the unit is already on
+	// the big value: max/min for temperature and humidity, max for wind,
+	// wettest hour for rain (the 24 h total is the big one).
+	const extremes = (id) => {
+		const vals = trendOf(id).filter((v) => v != null)
+		if (vals.length === 0) return null
+		const digits = metric === 'temperatura' || metric === 'chuva' ? 1 : 0
+		const n = (v) => v.toLocaleString('pt-PT', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+		const max = Math.max(...vals)
+		const min = Math.min(...vals)
+		if (metric === 'chuva') return max > 0 ? `máx. ${n(max)}/h` : null
+		if (metric === 'vento') return `máx. ${n(max)}`
+		return `máx. ${n(max)} · mín. ${n(min)}`
+	}
 
 	const tab = (key) =>
 		`px-3 py-1 rounded-md text-xs font-semibold transition ${metric === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`
@@ -88,7 +102,9 @@ export default function DistrictStations({ code, name, catalog, obs, warnings, n
 				<div>
 					<h2 className="text-lg font-bold text-gray-900">Estações meteorológicas em {name}</h2>
 					<p className="text-xs text-gray-500 mt-0.5">
-						{metric === 'chuva' ? 'Chuva acumulada nas últimas 24 horas' : `${meta.label} agora e nas últimas 24 horas`}
+						{metric === 'chuva'
+							? 'Chuva acumulada nas últimas 24 horas e hora mais chuvosa'
+							: `${meta.label} agora, com ${metric === 'vento' ? 'o máximo' : 'máximo e mínimo'} das últimas 24 horas`}
 						{!picked && auto.warning && (
 							<>
 								{' '}
@@ -130,7 +146,11 @@ export default function DistrictStations({ code, name, catalog, obs, warnings, n
 							/>
 							<span className="min-w-[5rem] shrink-0 text-right">
 								<span className="block text-lg font-semibold leading-tight text-gray-900 tabular-nums">{bigValue(r) ?? '—'}</span>
-								{rainNote(r.id) && <span className="block text-[11px] leading-tight text-gray-500">{rainNote(r.id)}</span>}
+								{[extremes(r.id), rainNote(r.id)].some(Boolean) && (
+									<span className="block text-[11px] leading-tight text-gray-500 tabular-nums whitespace-nowrap">
+										{[extremes(r.id), rainNote(r.id)].filter(Boolean).join(' · ')}
+									</span>
+								)}
 							</span>
 						</Link>
 					</li>

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 
 import { levelMeta } from '../../data/levels.js'
 import { warningTypeMeta } from '../../data/warningTypes.js'
+import TypeIcon from './TypeIcon.jsx'
 import { formatWhen } from '../../utils/format.js'
 import { warningPath } from '../../utils/share.js'
 
@@ -14,7 +15,7 @@ export default function WarningCard({ warning }) {
 			<div className={`h-2 ${level.bar}`} aria-hidden />
 			<div className="flex items-start gap-3 p-4">
 				<div className={`shrink-0 w-11 h-11 rounded-md flex items-center justify-center ${level.chip}`}>
-					<i className={`fas ${type.icon} text-lg`} aria-hidden />
+					<TypeIcon type={warning.awarenessTypeName} className="text-lg" />
 				</div>
 				<div className="min-w-0">
 					<h3 className="text-lg font-semibold text-gray-900 leading-tight">
