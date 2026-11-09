@@ -70,6 +70,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `src/pages/distrito.jsx`, `src/pages/aviso.jsx` + `src/components/district/*` (Breadcrumb, DistrictTimeline, OtherAreas) + `src/components/share/ShareButtons.jsx` (native share / WhatsApp / Facebook / X / copy) + `src/hooks/{useWarningsData,useNow}.js`.
 - `src/components/warnings/*` — cards, groups, overview chips (three sections: continental, Açores, Madeira), observation strip, state components.
 - `src/components/map/WarningsMap.jsx` — region-aware Leaflet map: takes `center/zoom/bounds/geojson/height`, filters stations by bbox, colors polygons per feature via `codeForFeature()`.
+  - **Warning-type icons** (`WarningIconsLayer`, own toggle in the layers control): one Leaflet `divIcon` per area — a pill of FA icons, one per warning type, filled with that type's worst level (`LEVELS[…].fill`). Anchor: bbox centre of the district's polygons (continental) or of the group's largest polygon (islands); MRM has no polygon and falls back to `IPMA_AREAS` lat/lng, so **MRM warnings do show on the map as an icon**. Hidden below zoom 6 (pills overlap). Follows the period picker like the polygons.
 - `src/components/map/MapLegend.jsx` — overlay legend.
 - `src/components/map/MapPeriodPicker.jsx` — period tabs for `/mapa`; each tab shows worst level + region count for its window. Periods come from `mapPeriods()` in `utils/timeline.js` ("Agora" = active this instant, then visitor-local calendar days up to the last `endTime`, max 5); filtering via `warningsInPeriod()`. Unknown/stale `?dia=` falls back to "Agora".
 - `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/`, `/cronologia`, `/mapa` and `/criterios`.
@@ -145,7 +146,7 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 
 ## Not yet implemented
 
-- **MRM polygon coloring**: Madeira's mountain warning zone crosses concelho boundaries; MRM warnings are surfaced textually but the map doesn't draw an MRM-colored region. A concelho-independent overlay would need a different data source.
+- **MRM polygon coloring**: Madeira's mountain warning zone crosses concelho boundaries; MRM warnings show as a map icon and in the list, but there's no MRM-coloured region. A concelho-independent overlay would need a different data source.
 - **Filters** (by district/type/level), **PWA/offline**, **dark mode**, **push notifications**, **history/archive**, **RSS**.
 
 ## Parent workspace note

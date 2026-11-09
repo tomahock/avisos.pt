@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import L from 'leaflet'
 import {
 	CircleMarker,
 	GeoJSON,
 	LayerGroup,
 	LayersControl,
 	MapContainer,
+	Marker,
 	Popup,
 	TileLayer,
+	Tooltip,
+	useMapEvents,
 } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -14,7 +18,7 @@ import MapLegend from './MapLegend.jsx'
 import { IPMA_AREAS, codeFromContinentalName } from '../../data/ipmaAreas.js'
 import { codeForFeature } from '../../data/islandConcelhos.js'
 import { LEVELS, levelMeta, worstLevelId } from '../../data/levels.js'
-import { warningTypeMeta } from '../../data/warningTypes.js'
+import { typeRank, warningTypeMeta } from '../../data/warningTypes.js'
 import {
 	formatHumidity,
 	formatPrecip,
@@ -109,6 +113,132 @@ function DistrictLayer({ geojson, warningsByCode, emptyText }) {
 	return (
 		<GeoJSON key={key} data={geojson} style={style} onEachFeature={onEachFeature} />
 	)
+}
+
+// --- Warning-type icons ---------------------------------------------------
+// One marker per area with warnings in the selected period: a pill of FA
+// icons, one per warning type, each filled with that type's worst level.
+// Font Awesome is loaded globally (index.html), so plain <i> tags work inside
+// a Leaflet divIcon.
+
+const ICON_PX = 22
+const ICON_GAP = 2
+const MAX_ICONS = 4
+// Below this zoom the pills pile on top of each other — hide them and let
+// the polygon colours speak.
+const MIN_ICON_ZOOM = 6
+// Readable glyph colour on each level fill (yellow needs dark text).
+const ICON_INK = { yellow: '#0f172a', orange: '#ffffff', red: '#ffffff' }
+
+// Anchor for an area's icon pill. Continental districts: centre of the
+// bounding box of all their municipalities, so the icon sits inside the
+// district rather than on the (often coastal) capital. Island groups: centre
+// of the largest polygon — the group's bbox centre lands in the sea between
+// islands. Areas without polygons (MRM) fall back to IPMA_AREAS lat/lng.
+function bboxOf(coords, box = [Infinity, Infinity, -Infinity, -Infinity]) {
+	if (typeof coords[0] === 'number') {
+		box[0] = Math.min(box[0], coords[0])
+		box[1] = Math.min(box[1], coords[1])
+		box[2] = Math.max(box[2], coords[0])
+		box[3] = Math.max(box[3], coords[1])
+	} else {
+		for (const c of coords) bboxOf(c, box)
+	}
+	return box
+}
+
+const bboxArea = (b) => (b[2] - b[0]) * (b[3] - b[1])
+const bboxCentre = (b) => [(b[1] + b[3]) / 2, (b[0] + b[2]) / 2]
+
+function areaAnchors(geojson) {
+	const union = new Map()
+	const largest = new Map()
+	for (const f of geojson?.features ?? []) {
+		const code = codeForFeature(f, codeFromContinentalName)
+		if (!code || !f.geometry) continue
+		const box = bboxOf(f.geometry.coordinates)
+		const u = union.get(code)
+		union.set(code, u ? [Math.min(u[0], box[0]), Math.min(u[1], box[1]), Math.max(u[2], box[2]), Math.max(u[3], box[3])] : box)
+		const l = largest.get(code)
+		if (!l || bboxArea(box) > bboxArea(l)) largest.set(code, box)
+	}
+	const anchors = new Map()
+	for (const [code, box] of union) {
+		const island = IPMA_AREAS[code]?.region !== 'continental'
+		anchors.set(code, bboxCentre(island ? largest.get(code) : box))
+	}
+	return anchors
+}
+
+// [{ type, level }] — worst level per type, in IPMA legend order.
+function typesWithLevel(list) {
+	const byType = new Map()
+	for (const w of list) {
+		const cur = byType.get(w.awarenessTypeName)
+		const p = LEVELS[w.awarenessLevelID]?.priority ?? 0
+		if (!cur || p > (LEVELS[cur]?.priority ?? 0)) byType.set(w.awarenessTypeName, w.awarenessLevelID)
+	}
+	return [...byType.entries()]
+		.sort((a, b) => typeRank(a[0]) - typeRank(b[0]))
+		.map(([type, level]) => ({ type, level }))
+}
+
+function warningIcon(items) {
+	const shown = items.slice(0, MAX_ICONS)
+	const extra = items.length - shown.length
+	const cells = shown.map(({ type, level }) => {
+		const meta = warningTypeMeta(type)
+		return `<span title="${esc(`${meta.label ?? type} — ${levelMeta(level).label}`)}" style="display:flex;align-items:center;justify-content:center;width:${ICON_PX}px;height:${ICON_PX}px;border-radius:6px;background:${LEVELS[level]?.fill ?? '#94a3b8'};color:${ICON_INK[level] ?? '#fff'};font-size:11px"><i class="fas ${meta.icon}"></i></span>`
+	})
+	if (extra > 0) {
+		cells.push(`<span style="display:flex;align-items:center;justify-content:center;height:${ICON_PX}px;padding:0 4px;font-size:11px;font-weight:700;color:#334155">+${extra}</span>`)
+	}
+	const width = shown.length * ICON_PX + (shown.length - 1) * ICON_GAP + (extra > 0 ? 24 : 0) + 6
+	const height = ICON_PX + 6
+	return L.divIcon({
+		className: '',
+		html: `<div style="display:flex;gap:${ICON_GAP}px;padding:3px;background:#fff;border-radius:9px;box-shadow:0 1px 4px rgba(15,23,42,.35)">${cells.join('')}</div>`,
+		iconSize: [width, height],
+		iconAnchor: [width / 2, height / 2],
+	})
+}
+
+function WarningIconsLayer({ geojson, warningsByCode, bounds, emptyText }) {
+	const map = useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+	const [zoom, setZoom] = useState(() => map.getZoom())
+	const anchors = useMemo(() => areaAnchors(geojson), [geojson])
+	const markers = useMemo(() => {
+		const out = []
+		for (const [code, list] of warningsByCode) {
+			const area = IPMA_AREAS[code]
+			const pos = anchors.get(code) ?? (area ? [area.lat, area.lng] : null)
+			if (!pos || !inBounds([pos[1], pos[0]], bounds)) continue
+			const items = typesWithLevel(list)
+			out.push({
+				code,
+				pos,
+				icon: warningIcon(items),
+				summary: items
+					.map(({ type, level }) => `${warningTypeMeta(type).label ?? type} (${levelMeta(level).label.toLowerCase()})`)
+					.join(', '),
+				popup: districtPopupHtml(area?.name ?? code, list, emptyText, code),
+			})
+		}
+		return out
+	}, [warningsByCode, anchors, bounds, emptyText])
+
+	if (zoom < MIN_ICON_ZOOM) return null
+
+	return markers.map((m) => (
+		<Marker key={m.code} position={m.pos} icon={m.icon} riseOnHover>
+			<Tooltip direction="top" offset={[0, -14]}>
+				<strong>{IPMA_AREAS[m.code]?.name ?? m.code}</strong>: {m.summary}
+			</Tooltip>
+			<Popup>
+				<div dangerouslySetInnerHTML={{ __html: m.popup }} />
+			</Popup>
+		</Marker>
+	))
 }
 
 function ObservationList({ obs }) {
@@ -228,6 +358,16 @@ export default function WarningsMap({
 							<DistrictLayer
 								geojson={geojson}
 								warningsByCode={warningsByCode}
+								emptyText={emptyText}
+							/>
+						</LayerGroup>
+					</LayersControl.Overlay>
+					<LayersControl.Overlay checked name="Ícones dos avisos">
+						<LayerGroup>
+							<WarningIconsLayer
+								geojson={geojson}
+								warningsByCode={warningsByCode}
+								bounds={bounds}
 								emptyText={emptyText}
 							/>
 						</LayerGroup>
