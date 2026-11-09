@@ -55,7 +55,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `src/components/warnings/*` — cards, groups, overview chips (three sections: continental, Açores, Madeira), observation strip, state components.
 - `src/components/map/WarningsMap.jsx` — region-aware Leaflet map: takes `center/zoom/bounds/geojson/height`, filters stations by bbox, colors polygons per feature via `codeForFeature()`.
 - `src/components/map/MapLegend.jsx` — overlay legend.
-- `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/` and `/mapa`.
+- `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/`, `/cronologia` and `/mapa`.
 - `src/data/`:
   - `ipmaAreas.js` — `IPMA_AREAS` (25 codes total: 18 continental + AOC/ACE/AOR + MCN/MCS/MRM/MPS) each with `name`/`chip`/`lat`/`lng`/`region`. `CONTINENTAL_CODES`, `ACORES_CODES`, `MADEIRA_CODES` slice by region. `codeFromContinentalName(disName)` resolves the CAOP `dis_name` for continental only.
   - `islandConcelhos.js` — `codeForFeature(feature, continentalResolver)` — for continental features it delegates to `dis_name` lookup; for island features it uses `con_name` → island subregion (per-concelho table). `MRM` (Madeira mountain zone) crosses concelho boundaries and is deliberately not mapped to polygons — MRM warnings still surface in the list/popups but don't get a colored polygon.
