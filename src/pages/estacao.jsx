@@ -184,17 +184,18 @@ function HourlySection({ id }) {
 					</div>
 					<div className="mt-4 grid gap-6 lg:grid-cols-2">
 						{[
-							['Temperatura', 'temperatura', 'line', fmtTemp],
-							['Precipitação por hora', 'precAcumulada', 'bar', fmtMm],
-							['Vento médio', 'intensidadeVentoKM', 'line', fmtKmh],
-							['Humidade relativa', 'humidade', 'line', fmtPct],
-						].map(([title, field, kind, format]) => (
+							['Temperatura', 'temperatura', 'line', fmtTemp, 'minmax'],
+							['Precipitação por hora', 'precAcumulada', 'bar', fmtMm, 'total'],
+							['Vento médio', 'intensidadeVentoKM', 'line', fmtKmh, 'max'],
+							['Humidade relativa', 'humidade', 'line', fmtPct, 'minmax'],
+						].map(([title, field, kind, format, stats]) => (
 							<StationChart
 								key={field}
 								title={title}
 								kind={kind}
 								points={series(field)}
 								format={format}
+								stats={stats}
 								formatTime={dayHourFmt}
 								xLabel={xLabel}
 								hoverIdx={hoverIdx}

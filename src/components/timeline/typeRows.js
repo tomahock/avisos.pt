@@ -13,6 +13,6 @@ export function typeRows(warnings) {
 		.sort((a, b) => typeRank(a) - typeRank(b))
 		.map((name) => {
 			const meta = warningTypeMeta(name)
-			return { key: name, label: meta.label ?? name, icon: meta.icon, warnings: byType.get(name) }
+			return { key: name, label: meta.label ?? name, iconType: name, warnings: byType.get(name) }
 		})
 }

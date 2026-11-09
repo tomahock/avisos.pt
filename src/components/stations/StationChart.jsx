@@ -49,6 +49,9 @@ export default function StationChart({
 	xLabel,
 	height = 140,
 	showLatest = true,
+	// 'minmax' | 'max' | 'total' | null — extremes of the plotted period,
+	// shown next to the title. Default: minmax for line/range, total for bar.
+	stats,
 	hoverIdx = null,
 	onHover = () => {},
 }) {
@@ -119,12 +122,25 @@ export default function StationChart({
 
 	const last = [...points].reverse().find((p) => p.v != null)
 
+	const mode = stats === undefined ? (kind === 'bar' ? 'total' : 'minmax') : stats
+	let statsText = null
+	if (mode && hasData) {
+		const vs = kind === 'range' ? null : points.map((p) => p.v).filter((v) => v != null)
+		const max = kind === 'range' ? Math.max(...points.map((p) => p.hi).filter((v) => v != null)) : Math.max(...vs)
+		const min = kind === 'range' ? Math.min(...points.map((p) => p.lo).filter((v) => v != null)) : Math.min(...vs)
+		if (mode === 'total') statsText = `total ${format(vs.reduce((a, v) => a + v, 0))}`
+		else if (mode === 'max') statsText = `máx. ${format(max)}`
+		else statsText = `máx. ${format(max)} · mín. ${format(min)}`
+	}
+	const latestText = showLatest && kind !== 'range' && last ? `agora ${format(last.v)}` : null
+	const captionRight = [latestText, statsText].filter(Boolean).join(' · ')
+
 	return (
 		<figure className="m-0">
 			<figcaption className="flex items-baseline justify-between gap-2 text-sm">
 				<span className="font-semibold text-gray-900">{title}</span>
-				{showLatest && kind !== 'range' && last && hoverIdx == null && (
-					<span className="text-gray-500 tabular-nums">agora {format(last.v)}</span>
+				{captionRight && (
+					<span className={`text-gray-500 tabular-nums text-right transition-opacity ${hoverIdx == null ? '' : 'opacity-0'}`}>{captionRight}</span>
 				)}
 			</figcaption>
 			<div ref={ref} className="relative mt-1 select-none">

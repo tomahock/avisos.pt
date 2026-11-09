@@ -6,6 +6,7 @@ import StateEmpty from '../components/warnings/StateEmpty.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
 import TimelineGrid from '../components/timeline/TimelineGrid.jsx'
+import TypeIcon from '../components/warnings/TypeIcon.jsx'
 import {
 	ACORES_CODES,
 	CONTINENTAL_CODES,
@@ -123,7 +124,7 @@ function WarningRow({ warning, now }) {
 	return (
 		<li className="flex gap-3 py-4 border-b border-gray-100 last:border-b-0">
 			<div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${level.chip}`}>
-				<i className={`fas ${type.icon}`} aria-hidden />
+				<TypeIcon type={warning.awarenessTypeName} />
 			</div>
 			<div className="min-w-0 flex-1">
 				<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">

@@ -6,6 +6,7 @@ import ShareButtons from '../components/share/ShareButtons.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
 import WarningCard from '../components/warnings/WarningCard.jsx'
+import TypeIcon from '../components/warnings/TypeIcon.jsx'
 import Breadcrumb from '../components/district/Breadcrumb.jsx'
 import DistrictTimeline from '../components/district/DistrictTimeline.jsx'
 import OtherAreas from '../components/district/OtherAreas.jsx'
@@ -39,7 +40,7 @@ function WarningHero({ warning, now }) {
 			<div className="p-5 md:p-7">
 				<div className="flex items-start gap-4">
 					<div className={`shrink-0 w-14 h-14 rounded-xl flex items-center justify-center ${level.chip}`}>
-						<i className={`fas ${type.icon} text-2xl`} aria-hidden />
+						<TypeIcon type={warning.awarenessTypeName} className="text-2xl" />
 					</div>
 					<div className="min-w-0">
 						<p className={`text-xs font-bold uppercase tracking-wider ${level.text}`}>Aviso {level.label}</p>
