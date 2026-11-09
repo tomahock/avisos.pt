@@ -6,6 +6,7 @@ import {
 	dayLabel,
 	formatHour,
 	groupDays,
+	parseWarningTime,
 	warningsAt,
 	worstAt,
 } from '../../utils/timeline.js'
@@ -38,8 +39,8 @@ function Segment({ run, hours, warnings, mode }) {
 	const to = new Date(hours[run.start + run.len - 1].getTime() + HOUR)
 	const inRun = warnings.filter(
 		(w) =>
-			new Date(w.startTime) < to &&
-			new Date(w.endTime) > from &&
+			parseWarningTime(w.startTime) < to.getTime() &&
+			parseWarningTime(w.endTime) > from.getTime() &&
 			w.awarenessLevelID === run.level
 	)
 	const types = uniqueTypes(inRun)
@@ -147,7 +148,9 @@ export default function TimelineGrid({ hours, rows, now, mode = 'level' }) {
 
 	const trackWidth = hours.length * CELL
 	const nowLeft = ((now - hours[0]) / HOUR) * CELL
-	const idx = hoverIdx ?? 0
+	// The window can shrink when the hour rolls over while a column is still
+	// selected — never index past the end.
+	const idx = hoverIdx !== null && hoverIdx < hours.length ? hoverIdx : 0
 
 	function pick(e) {
 		const rect = e.currentTarget.getBoundingClientRect()
@@ -165,7 +168,7 @@ export default function TimelineGrid({ hours, rows, now, mode = 'level' }) {
 
 	return (
 		<div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
-			<Inspector hour={hours[idx]} isNow={hoverIdx === null || hoverIdx === 0} rows={rows} />
+			<Inspector hour={hours[idx]} isNow={idx === 0} rows={rows} />
 
 			<div className="flex">
 				{/* Fixed label column */}
@@ -265,10 +268,10 @@ export default function TimelineGrid({ hours, rows, now, mode = 'level' }) {
 								style={{ left: i * CELL }}
 							/>
 						))}
-						{hoverIdx !== null && (
+						{hoverIdx !== null && hoverIdx < hours.length && (
 							<div
 								className="absolute top-9 bottom-0 bg-gray-900/5 ring-1 ring-inset ring-gray-900/10 pointer-events-none"
-								style={{ left: hoverIdx * CELL, width: CELL }}
+								style={{ left: idx * CELL, width: CELL }}
 							/>
 						)}
 						<div

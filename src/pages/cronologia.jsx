@@ -17,9 +17,14 @@ import {
 import { LEVELS, levelMeta, worstLevelId } from '../data/levels.js'
 import { warningTypeMeta } from '../data/warningTypes.js'
 import { fetchJson } from '../utils/fetchJson.js'
-import { formatWhen } from '../utils/format.js'
 import { usePageTitle } from '../utils/pageTitle.js'
-import { buildHours, durationHours, relativeWindow } from '../utils/timeline.js'
+import {
+	buildHours,
+	durationHours,
+	formatWarningTime,
+	parseWarningTime,
+	relativeWindow,
+} from '../utils/timeline.js'
 
 const REGIONS = [
 	{ key: 'continental', title: 'Portugal Continental', codes: CONTINENTAL_CODES },
@@ -157,7 +162,7 @@ function WarningRow({ warning, now }) {
 					</span>
 				</div>
 				<p className="text-xs text-gray-500 mt-0.5 tabular-nums">
-					{formatWhen(warning.startTime)} → {formatWhen(warning.endTime)} · {hours} h
+					{formatWarningTime(warning.startTime)} → {formatWarningTime(warning.endTime)} · {hours} h
 				</p>
 				<p className="text-sm text-gray-700 mt-1.5 leading-relaxed">{warning.text}</p>
 			</div>
@@ -265,7 +270,7 @@ export default function CronologiaPage() {
 		() =>
 			[...areaWarnings].sort(
 				(a, b) =>
-					new Date(a.startTime) - new Date(b.startTime) ||
+					parseWarningTime(a.startTime) - parseWarningTime(b.startTime) ||
 					typeRank(a.awarenessTypeName) - typeRank(b.awarenessTypeName)
 			),
 		[areaWarnings]
