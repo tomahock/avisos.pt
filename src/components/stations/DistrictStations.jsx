@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import Sparkline from './Sparkline.jsx'
 import { levelMeta } from '../../data/levels.js'
 import { fetchJson } from '../../utils/fetchJson.js'
-import { STATION_METRICS, defaultStationMetric } from '../../utils/stationMetrics.js'
+import { STATION_METRICS, defaultStationMetric, rainTotal } from '../../utils/stationMetrics.js'
 import { fmtKmh, fmtMm, fmtPct, fmtTemp, reading, stationPath, stationRows, windDir } from '../../utils/stations.js'
 
 const FORMAT = { temperatura: fmtTemp, chuva: fmtMm, vento: fmtKmh, humidade: fmtPct }
@@ -28,7 +28,7 @@ function secondary(o, metric) {
 // The measure defaults to what the district's warnings are about (rain for a
 // rain/thunderstorm warning, wind for wind, temperature otherwise) and can be
 // switched by the visitor.
-export default function DistrictStations({ code, name, catalog, obs, warnings }) {
+export default function DistrictStations({ code, name, catalog, obs, warnings, now }) {
 	const rows = useMemo(
 		() =>
 			stationRows(catalog, obs)
@@ -38,7 +38,14 @@ export default function DistrictStations({ code, name, catalog, obs, warnings })
 	)
 	const ids = rows.map((r) => r.id).join(',')
 	const [series, setSeries] = useState({})
-	const auto = useMemo(() => defaultStationMetric(warnings), [warnings])
+	// Re-evaluated as time passes (`now` ticks every minute on the district
+	// page): a warning starting or ending changes which one matters most.
+	const minute = now ? Math.floor(now.getTime() / 60000) : 0
+	const auto = useMemo(
+		() => defaultStationMetric(warnings, now ?? new Date()),
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[warnings, minute]
+	)
 	const [picked, setPicked] = useState(null)
 	const metric = picked ?? auto.metric
 	const meta = STATION_METRICS[metric]
@@ -58,12 +65,19 @@ export default function DistrictStations({ code, name, catalog, obs, warnings })
 	if (rows.length === 0) return null
 
 	const trendOf = (id) => (series[id] ?? []).map((o) => reading(o, meta.field))
-	// Rain: the 24 h total says more than the last hour.
-	const rain24 = (id) => {
-		const vals = trendOf(id).filter((v) => v != null)
-		return vals.length ? vals.reduce((s, v) => s + v, 0) : null
+	// Rain: the 24 h total says more than the last hour. Hours without a
+	// reading make it a lower bound (≥), never a silent 0.
+	const rain24 = (id) => rainTotal(trendOf(id))
+	const bigValue = (r) => {
+		if (metric !== 'chuva') return FORMAT[metric](reading(r.obs, meta.field))
+		const { total, missing } = rain24(r.id)
+		if (total == null) return null
+		return `${missing > 0 ? '≥ ' : ''}${fmtMm(total)}`
 	}
-	const bigValue = (r) => (metric === 'chuva' ? fmtMm(rain24(r.id)) : FORMAT[metric](reading(r.obs, meta.field)))
+	const rainNote = (id) => {
+		const { total, missing } = rain24(id)
+		return metric === 'chuva' && total != null && missing > 0 ? `${missing} h sem dados` : null
+	}
 
 	const tab = (key) =>
 		`px-3 py-1 rounded-md text-xs font-semibold transition ${metric === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`
@@ -114,7 +128,10 @@ export default function DistrictStations({ code, name, catalog, obs, warnings })
 								kind={meta.kind}
 								label={`${meta.label} nas últimas 24 horas em ${r.name}`}
 							/>
-							<span className="w-20 shrink-0 text-right text-lg font-semibold text-gray-900 tabular-nums">{bigValue(r) ?? '—'}</span>
+							<span className="min-w-[5rem] shrink-0 text-right">
+								<span className="block text-lg font-semibold leading-tight text-gray-900 tabular-nums">{bigValue(r) ?? '—'}</span>
+								{rainNote(r.id) && <span className="block text-[11px] leading-tight text-gray-500">{rainNote(r.id)}</span>}
+							</span>
 						</Link>
 					</li>
 				))}
