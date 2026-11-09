@@ -1,15 +1,23 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
-  "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    }
-  ],
-  "start_url": "./index.html",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+	"id": "/",
+	"name": "Avisos.pt — Avisos meteorológicos",
+	"short_name": "Avisos.pt",
+	"description": "Avisos meteorológicos do IPMA em vigor em Portugal, por distrito, com mapa, cronologia e estações meteorológicas.",
+	"lang": "pt-PT",
+	"dir": "ltr",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"theme_color": "#dc2626",
+	"background_color": "#f1f5f9",
+	"categories": ["weather", "news"],
+	"icons": [
+		{ "src": "/imgs/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+		{ "src": "/imgs/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+		{ "src": "/imgs/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+	],
+	"shortcuts": [
+		{ "name": "Mapa", "url": "/mapa", "icons": [{ "src": "/imgs/icon-192.png", "sizes": "192x192" }] },
+		{ "name": "Estações", "url": "/estacoes", "icons": [{ "src": "/imgs/icon-192.png", "sizes": "192x192" }] }
+	]
 }
