@@ -7,6 +7,10 @@
 //   nearest weather station — precision doesn't matter.
 // - `region`: 'continental' | 'acores' | 'madeira' — drives which map + which
 //   section of the overview grid the code lives in.
+// - `iconAt` (islands only): [lat, lng] for the /mapa warning-icon pill.
+//   Hand-picked because IPMA's island zones don't follow concelho polygons
+//   (Madeira north/south/mountain) and polygon maths lands icons in the sea
+//   or on top of each other. Continental icons are computed from polygons.
 // - `slug`: public URL segment (/distrito/<slug>). These are a URL contract —
 //   shared links and search engines depend on them, never rename one.
 
@@ -32,15 +36,15 @@ export const IPMA_AREAS = {
 	FAR: { name: 'Faro', slug: 'faro', lat: 37.0194, lng: -7.9304, region: 'continental' },
 
 	// Açores
-	AOC: { name: 'Açores – Grupo Ocidental', slug: 'acores-grupo-ocidental', chip: 'Ocidental', lat: 39.4547, lng: -31.1272, region: 'acores' },
-	ACE: { name: 'Açores – Grupo Central', slug: 'acores-grupo-central', chip: 'Central', lat: 38.6553, lng: -27.2205, region: 'acores' },
-	AOR: { name: 'Açores – Grupo Oriental', slug: 'acores-grupo-oriental', chip: 'Oriental', lat: 37.7412, lng: -25.6756, region: 'acores' },
+	AOC: { name: 'Açores – Grupo Ocidental', slug: 'acores-grupo-ocidental', chip: 'Ocidental', lat: 39.4547, lng: -31.1272, region: 'acores', iconAt: [39.45, -31.19] },
+	ACE: { name: 'Açores – Grupo Central', slug: 'acores-grupo-central', chip: 'Central', lat: 38.6553, lng: -27.2205, region: 'acores', iconAt: [38.46, -28.33] },
+	AOR: { name: 'Açores – Grupo Oriental', slug: 'acores-grupo-oriental', chip: 'Oriental', lat: 37.7412, lng: -25.6756, region: 'acores', iconAt: [37.78, -25.5] },
 
 	// Madeira
-	MCN: { name: 'Madeira – Costa Norte', slug: 'madeira-costa-norte', chip: 'Costa Norte', lat: 32.7997, lng: -16.8834, region: 'madeira' },
-	MCS: { name: 'Madeira – Costa Sul', slug: 'madeira-costa-sul', chip: 'Costa Sul', lat: 32.6669, lng: -16.9241, region: 'madeira' },
-	MRM: { name: 'Madeira – Regiões Montanhosas', slug: 'madeira-regioes-montanhosas', chip: 'Montanha', lat: 32.758, lng: -16.941, region: 'madeira' },
-	MPS: { name: 'Porto Santo', slug: 'porto-santo', chip: 'Porto Santo', lat: 33.0619, lng: -16.3358, region: 'madeira' },
+	MCN: { name: 'Madeira – Costa Norte', slug: 'madeira-costa-norte', chip: 'Costa Norte', lat: 32.7997, lng: -16.8834, region: 'madeira', iconAt: [32.83, -17.05] },
+	MCS: { name: 'Madeira – Costa Sul', slug: 'madeira-costa-sul', chip: 'Costa Sul', lat: 32.6669, lng: -16.9241, region: 'madeira', iconAt: [32.665, -17.0] },
+	MRM: { name: 'Madeira – Regiões Montanhosas', slug: 'madeira-regioes-montanhosas', chip: 'Montanha', lat: 32.758, lng: -16.941, region: 'madeira', iconAt: [32.755, -16.92] },
+	MPS: { name: 'Porto Santo', slug: 'porto-santo', chip: 'Porto Santo', lat: 33.0619, lng: -16.3358, region: 'madeira', iconAt: [33.07, -16.34] },
 }
 
 export const IPMA_AREA_CODES = Object.keys(IPMA_AREAS)

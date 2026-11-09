@@ -15,6 +15,7 @@ import {
 import 'leaflet/dist/leaflet.css'
 
 import MapLegend from './MapLegend.jsx'
+import { areaAnchors } from './anchors.js'
 import { IPMA_AREAS, codeFromContinentalName } from '../../data/ipmaAreas.js'
 import { codeForFeature } from '../../data/islandConcelhos.js'
 import { LEVELS, levelMeta, worstLevelId } from '../../data/levels.js'
@@ -130,46 +131,6 @@ const MIN_ICON_ZOOM = 6
 // Readable glyph colour on each level fill (yellow needs dark text).
 const ICON_INK = { yellow: '#0f172a', orange: '#ffffff', red: '#ffffff' }
 
-// Anchor for an area's icon pill. Continental districts: centre of the
-// bounding box of all their municipalities, so the icon sits inside the
-// district rather than on the (often coastal) capital. Island groups: centre
-// of the largest polygon — the group's bbox centre lands in the sea between
-// islands. Areas without polygons (MRM) fall back to IPMA_AREAS lat/lng.
-function bboxOf(coords, box = [Infinity, Infinity, -Infinity, -Infinity]) {
-	if (typeof coords[0] === 'number') {
-		box[0] = Math.min(box[0], coords[0])
-		box[1] = Math.min(box[1], coords[1])
-		box[2] = Math.max(box[2], coords[0])
-		box[3] = Math.max(box[3], coords[1])
-	} else {
-		for (const c of coords) bboxOf(c, box)
-	}
-	return box
-}
-
-const bboxArea = (b) => (b[2] - b[0]) * (b[3] - b[1])
-const bboxCentre = (b) => [(b[1] + b[3]) / 2, (b[0] + b[2]) / 2]
-
-function areaAnchors(geojson) {
-	const union = new Map()
-	const largest = new Map()
-	for (const f of geojson?.features ?? []) {
-		const code = codeForFeature(f, codeFromContinentalName)
-		if (!code || !f.geometry) continue
-		const box = bboxOf(f.geometry.coordinates)
-		const u = union.get(code)
-		union.set(code, u ? [Math.min(u[0], box[0]), Math.min(u[1], box[1]), Math.max(u[2], box[2]), Math.max(u[3], box[3])] : box)
-		const l = largest.get(code)
-		if (!l || bboxArea(box) > bboxArea(l)) largest.set(code, box)
-	}
-	const anchors = new Map()
-	for (const [code, box] of union) {
-		const island = IPMA_AREAS[code]?.region !== 'continental'
-		anchors.set(code, bboxCentre(island ? largest.get(code) : box))
-	}
-	return anchors
-}
-
 // [{ type, level }] — worst level per type, in IPMA legend order.
 function typesWithLevel(list) {
 	const byType = new Map()
@@ -211,7 +172,7 @@ function WarningIconsLayer({ geojson, warningsByCode, bounds, emptyText }) {
 		const out = []
 		for (const [code, list] of warningsByCode) {
 			const area = IPMA_AREAS[code]
-			const pos = anchors.get(code) ?? (area ? [area.lat, area.lng] : null)
+			const pos = anchors.get(code)
 			if (!pos || !inBounds([pos[1], pos[0]], bounds)) continue
 			const items = typesWithLevel(list)
 			out.push({
