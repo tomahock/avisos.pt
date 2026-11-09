@@ -164,12 +164,13 @@ export function warningSeo(w) {
 	}
 }
 
-// Changes whenever the warnings that a card depends on change, so social
-// networks (which cache og:image per URL) fetch a fresh image.
+// Changes whenever anything a card renders changes (including the warning
+// text), so social networks — and our own /og cache, keyed by URL — fetch a
+// fresh image.
 export function warningsVersion(list) {
 	let h = 0
 	const s = list
-		.map((w) => `${w.idAreaAviso}|${w.awarenessTypeName}|${w.awarenessLevelID}|${w.startTime}|${w.endTime}`)
+		.map((w) => `${w.idAreaAviso}|${w.awarenessTypeName}|${w.awarenessLevelID}|${w.startTime}|${w.endTime}|${w.text ?? ''}`)
 		.sort()
 		.join(';')
 	for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
