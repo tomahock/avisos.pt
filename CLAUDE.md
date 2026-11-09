@@ -157,6 +157,10 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 - **MRM polygon coloring**: Madeira's mountain warning zone crosses concelho boundaries; MRM warnings show as a map icon and in the list, but there's no MRM-coloured region. A concelho-independent overlay would need a different data source.
 - **Filters** (by district/type/level), **PWA/offline**, **dark mode**, **push notifications**, **history/archive**, **RSS**.
 
+## License & attribution
+
+AGPL-3.0-or-later (`LICENSE`) with an additional §7(b) attribution term in `NOTICE` — same model as the Fogos.pt projects (fogosapi, fogospt). The site footer (`src/components/layout/Footer.jsx`) carries that attribution plus the data credits (IPMA via the Fogos.pt API, concelho GeoJSON source, OpenStreetMap) and the GitHub link. **Keep the footer credits** when redesigning it, and add any new data source to `NOTICE`, the README "Créditos dos dados" and the footer.
+
 ## Parent workspace note
 
 This project lives inside `~/Projects/Tomahock/` (see the root `CLAUDE.md`). Never run npm commands from that parent — always from `avisos.pt/` (or with an absolute path). Commits are scoped to this repo only.

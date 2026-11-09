@@ -1,0 +1,51 @@
+Avisos.pt
+Copyright (C) 2021-2026 Tomahock e contribuidores — Avisos.pt / VOST Portugal
+https://github.com/tomahock/avisos.pt
+
+Este programa é software livre: pode redistribuí-lo e/ou modificá-lo nos
+termos da GNU Affero General Public License, publicada pela Free Software
+Foundation, na versão 3 da licença ou (à sua escolha) em qualquer versão
+posterior. Ver o ficheiro LICENSE.
+
+Em particular, quem disponibilizar este programa ou uma versão modificada
+numa rede (por exemplo como site) tem de oferecer aos utilizadores o
+código-fonte correspondente (secção 13 da AGPL-3.0).
+
+-------------------------------------------------------------------------------
+Termo adicional (secção 7(b) da GNU AGPL-3.0) — atribuição
+-------------------------------------------------------------------------------
+
+Qualquer cópia ou versão modificada deste programa, e qualquer serviço em rede
+nele baseado, tem de manter, de forma visível na interface (por exemplo no
+rodapé) e na documentação, a seguinte atribuição com a ligação ativa:
+
+    Baseado no Avisos.pt (https://avisos.pt), por Tomahock
+    https://github.com/tomahock/avisos.pt
+
+-------------------------------------------------------------------------------
+Dados e recursos de terceiros (mantêm as suas licenças e termos)
+-------------------------------------------------------------------------------
+
+Dados apresentados no site (não fazem parte do repositório)
+    Avisos meteorológicos e observações das estações meteorológicas:
+    Instituto Português do Mar e da Atmosfera (IPMA) — https://www.ipma.pt
+    Obtidos através da API do Fogos.pt — https://fogos.pt/pt/api
+    (código: https://github.com/FogosPT/fogosapi). Seguem os termos do IPMA.
+
+public/data/pt-continental.geojson
+public/data/pt-arquipelagos.geojson
+    Limites dos concelhos de Portugal (ano 2021), versões simplificadas de
+    https://github.com/FrancisPais/geojson-portugal-continental e
+    https://github.com/FrancisPais/geojson-portugal-arquipelagos.
+    Os repositórios de origem não declaram licença.
+
+Mapa base
+    © contribuidores do OpenStreetMap — https://www.openstreetmap.org/copyright
+    (dados ODbL; mosaicos servidos pela OpenStreetMap Foundation).
+
+Ícones e tipos de letra (carregados de CDN, não incluídos no repositório)
+    Font Awesome Free — ícones CC BY 4.0, fontes SIL OFL 1.1, código MIT.
+    Fira Sans — SIL Open Font License 1.1 (Google Fonts / Fontsource).
+
+As dependências de npm mantêm as suas próprias licenças (ver package.json e
+node_modules/*/LICENSE).
