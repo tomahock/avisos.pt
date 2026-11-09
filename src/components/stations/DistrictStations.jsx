@@ -2,11 +2,33 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import Sparkline from './Sparkline.jsx'
+import { levelMeta } from '../../data/levels.js'
 import { fetchJson } from '../../utils/fetchJson.js'
+import { STATION_METRICS, defaultStationMetric, rainTotal } from '../../utils/stationMetrics.js'
 import { fmtKmh, fmtMm, fmtPct, fmtTemp, reading, stationPath, stationRows, windDir } from '../../utils/stations.js'
 
-// Stations inside one IPMA area: current reading + 24 h temperature trend.
-export default function DistrictStations({ code, name, catalog, obs }) {
+const FORMAT = { temperatura: fmtTemp, chuva: fmtMm, vento: fmtKmh, humidade: fmtPct }
+
+// Small line under the station name: the measures that aren't the big one.
+function secondary(o, metric) {
+	const wind = reading(o, 'intensidadeVentoKM')
+	const parts = {
+		temperatura: fmtTemp(reading(o, 'temperatura')),
+		vento: wind != null ? `${fmtKmh(wind)}${windDir(reading(o, 'idDireccVento')) ? ` ${windDir(reading(o, 'idDireccVento'))}` : ''}` : null,
+		chuva: reading(o, 'precAcumulada') > 0 ? `${fmtMm(reading(o, 'precAcumulada'))}/h` : null,
+		humidade: fmtPct(reading(o, 'humidade')),
+	}
+	return Object.entries(parts)
+		.filter(([k, v]) => k !== metric && v)
+		.map(([, v]) => v)
+		.join(' · ')
+}
+
+// Stations inside one IPMA area: current reading + 24 h trend of one measure.
+// The measure defaults to what the district's warnings are about (rain for a
+// rain/thunderstorm warning, wind for wind, temperature otherwise) and can be
+// switched by the visitor.
+export default function DistrictStations({ code, name, catalog, obs, warnings, now }) {
 	const rows = useMemo(
 		() =>
 			stationRows(catalog, obs)
@@ -15,56 +37,104 @@ export default function DistrictStations({ code, name, catalog, obs }) {
 		[catalog, obs, code]
 	)
 	const ids = rows.map((r) => r.id).join(',')
-	const [trend, setTrend] = useState({})
+	const [series, setSeries] = useState({})
+	// Re-evaluated as time passes (`now` ticks every minute on the district
+	// page): a warning starting or ending changes which one matters most.
+	const minute = now ? Math.floor(now.getTime() / 60000) : 0
+	const auto = useMemo(
+		() => defaultStationMetric(warnings, now ?? new Date()),
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[warnings, minute]
+	)
+	const [picked, setPicked] = useState(null)
+	const metric = picked ?? auto.metric
+	const meta = STATION_METRICS[metric]
+
+	// The user's choice belongs to one district; reset when navigating.
+	useEffect(() => setPicked(null), [code])
 
 	useEffect(() => {
 		if (!ids) return
 		const ctrl = new AbortController()
 		fetchJson(`/api/observations/recent?stations=${ids}`, ctrl.signal)
-			.then((data) => {
-				const out = {}
-				for (const [id, list] of Object.entries(data?.stations ?? {})) out[id] = list.map((o) => reading(o, 'temperatura'))
-				setTrend(out)
-			})
+			.then((data) => setSeries(data?.stations ?? {}))
 			.catch(() => {})
 		return () => ctrl.abort()
 	}, [ids])
 
 	if (rows.length === 0) return null
 
+	const trendOf = (id) => (series[id] ?? []).map((o) => reading(o, meta.field))
+	// Rain: the 24 h total says more than the last hour. Hours without a
+	// reading make it a lower bound (≥), never a silent 0.
+	const rain24 = (id) => rainTotal(trendOf(id))
+	const bigValue = (r) => {
+		if (metric !== 'chuva') return FORMAT[metric](reading(r.obs, meta.field))
+		const { total, missing } = rain24(r.id)
+		if (total == null) return null
+		return `${missing > 0 ? '≥ ' : ''}${fmtMm(total)}`
+	}
+	const rainNote = (id) => {
+		const { total, missing } = rain24(id)
+		return metric === 'chuva' && total != null && missing > 0 ? `${missing} h sem dados` : null
+	}
+
+	const tab = (key) =>
+		`px-3 py-1 rounded-md text-xs font-semibold transition ${metric === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`
+
 	return (
 		<section className="mt-10">
-			<div className="flex items-baseline justify-between gap-3">
-				<h2 className="text-lg font-bold text-gray-900">Estações meteorológicas em {name}</h2>
-				<Link to="/estacoes" className="text-sm text-primary-700">Todas as estações →</Link>
+			<div className="flex flex-wrap items-end justify-between gap-3">
+				<div>
+					<h2 className="text-lg font-bold text-gray-900">Estações meteorológicas em {name}</h2>
+					<p className="text-xs text-gray-500 mt-0.5">
+						{metric === 'chuva' ? 'Chuva acumulada nas últimas 24 horas' : `${meta.label} agora e nas últimas 24 horas`}
+						{!picked && auto.warning && (
+							<>
+								{' '}
+								— escolhido por haver aviso{' '}
+								<span className={`font-semibold ${levelMeta(auto.warning.awarenessLevelID).text}`}>
+									{levelMeta(auto.warning.awarenessLevelID).label.toLowerCase()}
+								</span>{' '}
+								de {auto.warning.awarenessTypeName}
+							</>
+						)}
+					</p>
+				</div>
+				<div className="flex items-center gap-3">
+					<div className="flex gap-1 p-1 bg-gray-100 rounded-lg" role="tablist" aria-label="Medida">
+						{Object.entries(STATION_METRICS).map(([key, m]) => (
+							<button key={key} type="button" role="tab" aria-selected={metric === key} onClick={() => setPicked(key)} className={tab(key)}>
+								{m.label}
+							</button>
+						))}
+					</div>
+					<Link to="/estacoes" className="hidden sm:inline text-sm text-primary-700">Todas as estações →</Link>
+				</div>
 			</div>
 			<ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3 list-none m-0 p-0">
-				{rows.map((r) => {
-					const o = r.obs
-					const extras = [
-						fmtKmh(reading(o, 'intensidadeVentoKM')) &&
-							`${fmtKmh(reading(o, 'intensidadeVentoKM'))}${windDir(reading(o, 'idDireccVento')) ? ` ${windDir(reading(o, 'idDireccVento'))}` : ''}`,
-						reading(o, 'precAcumulada') > 0 && fmtMm(reading(o, 'precAcumulada')),
-						fmtPct(reading(o, 'humidade')),
-					].filter(Boolean)
-					return (
-						<li key={r.id}>
-							<Link
-								to={stationPath(r.id, r.name)}
-								className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 no-underline hover:border-gray-300 hover:bg-gray-50"
-							>
-								<span className="min-w-0 flex-1">
-									<span className="block truncate text-sm font-medium text-gray-900">{r.name}</span>
-									<span className="block truncate text-xs text-gray-500">{o ? extras.join(' · ') || '—' : 'Sem leitura na última hora'}</span>
-								</span>
-								<Sparkline values={trend[r.id] ?? []} label={`Temperatura nas últimas 24 horas em ${r.name}`} />
-								<span className="w-16 shrink-0 text-right text-lg font-semibold text-gray-900 tabular-nums">
-									{fmtTemp(reading(o, 'temperatura')) ?? '—'}
-								</span>
-							</Link>
-						</li>
-					)
-				})}
+				{rows.map((r) => (
+					<li key={r.id}>
+						<Link
+							to={stationPath(r.id, r.name)}
+							className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 no-underline hover:border-gray-300 hover:bg-gray-50"
+						>
+							<span className="min-w-0 flex-1">
+								<span className="block truncate text-sm font-medium text-gray-900">{r.name}</span>
+								<span className="block truncate text-xs text-gray-500">{r.obs ? secondary(r.obs, metric) || '—' : 'Sem leitura na última hora'}</span>
+							</span>
+							<Sparkline
+								values={trendOf(r.id)}
+								kind={meta.kind}
+								label={`${meta.label} nas últimas 24 horas em ${r.name}`}
+							/>
+							<span className="min-w-[5rem] shrink-0 text-right">
+								<span className="block text-lg font-semibold leading-tight text-gray-900 tabular-nums">{bigValue(r) ?? '—'}</span>
+								{rainNote(r.id) && <span className="block text-[11px] leading-tight text-gray-500">{rainNote(r.id)}</span>}
+							</span>
+						</Link>
+					</li>
+				))}
 			</ul>
 		</section>
 	)
