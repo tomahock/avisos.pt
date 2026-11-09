@@ -32,7 +32,9 @@ npm run lint
 
 ## Deploy
 
-Cloudflare Pages builds this repo from git. Framework preset **Vite**, build command `npm run build`, output directory `dist`, Node ≥ 18. Pushing to the deploy branch is a production action — confirm before pushing if the user hasn't already asked.
+Cloudflare Pages builds this repo from git. Framework preset **Vite**, build command `npm run build`, output directory `dist`, Node ≥ 18.
+
+`wrangler.toml` (name, `pages_build_output_dir`, `compatibility_date`) is the **source of truth** for those settings — the dashboard can't edit them while it exists. The compat date must stay ≥ 2022-11-30: `workers-og` needs the `ReadableStream` constructor, and on an older date every `/og/*` request fails with error 1101. Bumping the date changes runtime behaviour for all functions — check a preview deploy first. Pushing to the deploy branch is a production action — confirm before pushing if the user hasn't already asked.
 
 **Required secret**: `FOGOS_API_KEY` in the CF Pages dashboard for Production **and** Preview. If missing, all `/api/*` endpoints return `500 {"error":"missing_api_key"}` — the proxy fails loud on purpose (no silent fallback).
 
