@@ -110,3 +110,42 @@ function inDuration(ms) {
 export function durationHours(w) {
 	return Math.round((end(w) - start(w)) / HOUR)
 }
+
+// Periods for the /mapa selector: "Agora" (active this instant) followed by
+// one entry per calendar day (visitor-local) from today up to the last day
+// that still has a warning, capped at MAX_DAYS. Today's window starts at
+// `now` since past hours never have warnings (upstream drops ended ones).
+const MAX_DAYS = 5
+
+export function mapPeriods(warnings, now = new Date()) {
+	const periods = [
+		{ key: 'agora', main: 'Agora', sub: null, from: now.getTime(), to: now.getTime() + 1 },
+	]
+	let last = now.getTime()
+	for (const w of warnings) {
+		const e = end(w)
+		if (Number.isFinite(e) && e > last) last = e
+	}
+	const day = floorDay(now)
+	for (let i = 0; i < MAX_DAYS; i++) {
+		const from = new Date(day)
+		from.setDate(day.getDate() + i)
+		if (from.getTime() >= last) break
+		const to = new Date(from)
+		to.setDate(from.getDate() + 1)
+		const label = dayLabel(from, now)
+		periods.push({
+			key: String(i),
+			main: label.main,
+			sub: label.sub,
+			from: i === 0 ? now.getTime() : from.getTime(),
+			to: to.getTime(),
+		})
+	}
+	return periods
+}
+
+// Warnings overlapping [period.from, period.to).
+export function warningsInPeriod(warnings, period) {
+	return warnings.filter((w) => start(w) < period.to && end(w) > period.from)
+}
