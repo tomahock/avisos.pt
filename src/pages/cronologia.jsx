@@ -17,12 +17,11 @@ import {
 import { LEVELS, levelMeta, worstLevelId } from '../data/levels.js'
 import { warningTypeMeta } from '../data/warningTypes.js'
 import { fetchJson } from '../utils/fetchJson.js'
+import { formatWhen, parseWarningTime } from '../utils/format.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import {
 	buildHours,
 	durationHours,
-	formatWarningTime,
-	parseWarningTime,
 	relativeWindow,
 } from '../utils/timeline.js'
 
@@ -162,7 +161,7 @@ function WarningRow({ warning, now }) {
 					</span>
 				</div>
 				<p className="text-xs text-gray-500 mt-0.5 tabular-nums">
-					{formatWarningTime(warning.startTime)} → {formatWarningTime(warning.endTime)} · {hours} h
+					{formatWhen(warning.startTime)} → {formatWhen(warning.endTime)} · {hours} h
 				</p>
 				<p className="text-sm text-gray-700 mt-1.5 leading-relaxed">{warning.text}</p>
 			</div>

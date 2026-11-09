@@ -1,4 +1,5 @@
 import { LEVELS } from '../data/levels.js'
+import { parseWarningTime } from './format.js'
 
 const HOUR = 3600 * 1000
 
@@ -9,62 +10,8 @@ const HOUR = 3600 * 1000
 const MIN_HOURS = 48
 const MAX_HOURS = 96
 
-// FogosPT timestamps are ISO without a timezone, as Lisbon wall-clock time.
-// `new Date(iso)` would read them in the visitor's timezone, shifting every
-// warning for anyone outside Portugal — resolve them to absolute instants
-// against Europe/Lisbon instead, and only localize when displaying.
-const SOURCE_TZ = 'Europe/Lisbon'
-const tzParts = new Intl.DateTimeFormat('en-US', {
-	timeZone: SOURCE_TZ,
-	hourCycle: 'h23',
-	year: 'numeric',
-	month: 'numeric',
-	day: 'numeric',
-	hour: 'numeric',
-	minute: 'numeric',
-	second: 'numeric',
-})
-
-// Offset (ms) of SOURCE_TZ from UTC at instant `ts`.
-function tzOffset(ts) {
-	const p = {}
-	for (const { type, value } of tzParts.formatToParts(new Date(ts))) p[type] = +value
-	return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - ts
-}
-
-const cache = new Map()
-
-export function parseWarningTime(iso) {
-	if (typeof iso !== 'string') return NaN
-	let ts = cache.get(iso)
-	if (ts !== undefined) return ts
-	const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/)
-	if (!m || /(Z|[+-]\d{2}:?\d{2})$/.test(iso)) {
-		ts = new Date(iso).getTime()
-	} else {
-		const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] ?? 0))
-		// Two passes so instants next to a DST switch pick the right offset.
-		ts = wall - tzOffset(wall)
-		ts = wall - tzOffset(ts)
-	}
-	cache.set(iso, ts)
-	return ts
-}
-
 const start = (w) => parseWarningTime(w.startTime)
 const end = (w) => parseWarningTime(w.endTime)
-
-// Warning time as the visitor's local "dd/mm, HH:MM".
-export function formatWarningTime(iso) {
-	const ts = parseWarningTime(iso)
-	if (!Number.isFinite(ts)) return iso
-	return new Date(ts).toLocaleString('pt-PT', {
-		day: '2-digit',
-		month: '2-digit',
-		hour: '2-digit',
-		minute: '2-digit',
-	})
-}
 
 export function floorHour(d) {
 	const t = new Date(d)

@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react'
 
 import { levelMeta } from '../../data/levels.js'
 import { warningTypeMeta } from '../../data/warningTypes.js'
+import { parseWarningTime } from '../../utils/format.js'
 import {
 	dayLabel,
 	formatHour,
 	groupDays,
-	parseWarningTime,
 	warningsAt,
 	worstAt,
 } from '../../utils/timeline.js'
