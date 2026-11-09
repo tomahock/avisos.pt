@@ -64,7 +64,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `src/utils/`:
   - `fetchJson.js` — throws on non-2xx.
   - `geo.js` — haversine + nearest-station-with-observations.
-  - `format.js` — `-99` sentinel filter, temp/wind/humidity/precip/timestamp formatters, `relativeMinutes`.
+  - `format.js` — `parseWarningTime`/`formatWhen` (Lisbon → instant → visitor-local), `-99` sentinel filter, temp/wind/humidity/precip/timestamp formatters, `relativeMinutes`.
   - `pageTitle.js` — `usePageTitle(title)` hook.
 
 ### GeoJSON assets
@@ -94,7 +94,7 @@ Warnings (`/v2/warnings/ipma`) — flat array:
 ```
 
 - `awarenessLevelID` ∈ `"yellow" | "orange" | "red"`. `"green"` never appears.
-- Timestamps ISO without timezone, interpreted as local PT.
+- Timestamps ISO without timezone, as Lisbon wall-clock time. **Never `new Date(iso)` them** (that reads them in the visitor's timezone) — use `parseWarningTime()` from `utils/format.js`, which resolves them against `Europe/Lisbon` (DST-aware). Display goes through `formatWhen()`, which shows the visitor's local time — same convention on every page.
 - Only warnings with `endTime >= now`.
 
 Observations (as trimmed by our proxy):
