@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import Layout from '../layouts/index.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
+import MapPeriodPicker from '../components/map/MapPeriodPicker.jsx'
 import WarningsMap from '../components/map/WarningsMap.jsx'
 import { fetchJson } from '../utils/fetchJson.js'
 import { usePageTitle } from '../utils/pageTitle.js'
+import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
 
 const REGIONS = [
 	{
@@ -51,6 +54,14 @@ export default function MapPage() {
 	const [error, setError] = useState(null)
 	const [updatedAt, setUpdatedAt] = useState(null)
 	const [reloadKey, setReloadKey] = useState(0)
+	const [now, setNow] = useState(() => new Date())
+	const [searchParams, setSearchParams] = useSearchParams()
+
+	// Keep "Agora" honest on a page left open — warnings start/end over time.
+	useEffect(() => {
+		const id = setInterval(() => setNow(new Date()), 60 * 1000)
+		return () => clearInterval(id)
+	}, [])
 
 	useEffect(() => {
 		const ctrl = new AbortController()
@@ -89,6 +100,20 @@ export default function MapPage() {
 		setReloadKey((k) => k + 1)
 	}, [])
 
+	const periods = useMemo(() => mapPeriods(warnings ?? [], now), [warnings, now])
+	// Unknown / stale ?dia= (e.g. a shared link from yesterday) falls back to "Agora".
+	const period = periods.find((p) => p.key === searchParams.get('dia')) ?? periods[0]
+	const selectPeriod = useCallback(
+		(key) => setSearchParams(key === 'agora' ? {} : { dia: key }, { replace: true }),
+		[setSearchParams]
+	)
+	const periodWarnings = useMemo(
+		() => (warnings ? warningsInPeriod(warnings, period) : []),
+		[warnings, period]
+	)
+	const isNow = period.key === 'agora'
+	const emptyText = isNow ? 'Sem avisos em vigor.' : 'Sem avisos neste período.'
+
 	const regionData = useMemo(() => {
 		if (!geoContinental || !geoArquipelagos) return null
 		return {
@@ -122,11 +147,26 @@ export default function MapPage() {
 
 	return (
 		<Layout updatedAt={updatedAt}>
+			<div className="px-4 mt-4 space-y-2">
+				<MapPeriodPicker
+					periods={periods}
+					warnings={warnings}
+					selected={period.key}
+					onSelect={selectPeriod}
+				/>
+				<p className="text-xs text-gray-500 px-1">
+					{isNow
+						? 'Avisos em vigor neste momento.'
+						: `Avisos previstos para ${period.main.toLowerCase()}${period.sub ? ` (${period.sub})` : ''} — pior nível de cada região ao longo do dia.`}
+				</p>
+			</div>
+
 			<div className="px-4 mt-4">
 				<RegionCard region={continental}>
 					<WarningsMap
 						geojson={regionData.continental}
-						warnings={warnings}
+						warnings={periodWarnings}
+						emptyText={emptyText}
 						stations={stations}
 						observations={obs}
 						center={continental.center}
@@ -142,7 +182,8 @@ export default function MapPage() {
 				<RegionCard region={acores}>
 					<WarningsMap
 						geojson={regionData.acores}
-						warnings={warnings}
+						warnings={periodWarnings}
+						emptyText={emptyText}
 						stations={stations}
 						observations={obs}
 						center={acores.center}
@@ -154,7 +195,8 @@ export default function MapPage() {
 				<RegionCard region={madeira}>
 					<WarningsMap
 						geojson={regionData.madeira}
-						warnings={warnings}
+						warnings={periodWarnings}
+						emptyText={emptyText}
 						stations={stations}
 						observations={obs}
 						center={madeira.center}

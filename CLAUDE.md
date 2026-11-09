@@ -8,7 +8,7 @@ React 18 SPA (Vite + Tailwind 3 + react-router 6) that renders the currently act
 
 - `/` — chip overview + district groups with cards
 - `/cronologia` — hour-by-hour timeline (IPMA-style grid, but local time): overview matrix region × hour, or `?d=<IPMA code>` for one row per warning type + chronological list
-- `/mapa` — Leaflet map with district polygons colored by warning level + toggleable weather station markers
+- `/mapa` — Leaflet map with district polygons colored by warning level + toggleable weather station markers. Period picker (Agora / Hoje / Amanhã / next days, `?dia=<offset>`) filters what the polygons and popups show
 
 Deployed as a static site on **Cloudflare Pages** at https://avisos.pt.
 
@@ -55,6 +55,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `src/components/warnings/*` — cards, groups, overview chips (three sections: continental, Açores, Madeira), observation strip, state components.
 - `src/components/map/WarningsMap.jsx` — region-aware Leaflet map: takes `center/zoom/bounds/geojson/height`, filters stations by bbox, colors polygons per feature via `codeForFeature()`.
 - `src/components/map/MapLegend.jsx` — overlay legend.
+- `src/components/map/MapPeriodPicker.jsx` — period tabs for `/mapa`; each tab shows worst level + region count for its window. Periods come from `mapPeriods()` in `utils/timeline.js` ("Agora" = active this instant, then visitor-local calendar days up to the last `endTime`, max 5); filtering via `warningsInPeriod()`. Unknown/stale `?dia=` falls back to "Agora".
 - `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/`, `/cronologia` and `/mapa`.
 - `src/data/`:
   - `ipmaAreas.js` — `IPMA_AREAS` (25 codes total: 18 continental + AOC/ACE/AOR + MCN/MCS/MRM/MPS) each with `name`/`chip`/`lat`/`lng`/`region`. `CONTINENTAL_CODES`, `ACORES_CODES`, `MADEIRA_CODES` slice by region. `codeFromContinentalName(disName)` resolves the CAOP `dis_name` for continental only.

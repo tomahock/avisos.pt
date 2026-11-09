@@ -31,9 +31,9 @@ function esc(str) {
 		.replace(/"/g, '&quot;')
 }
 
-function districtPopupHtml(title, warnings) {
+function districtPopupHtml(title, warnings, emptyText) {
 	if (!warnings || warnings.length === 0) {
-		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(title)}</p><p class="text-xs text-gray-500 mt-1 mb-0">Sem avisos em vigor.</p></div>`
+		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(title)}</p><p class="text-xs text-gray-500 mt-1 mb-0">${esc(emptyText)}</p></div>`
 	}
 	const items = warnings
 		.map((w) => {
@@ -73,7 +73,7 @@ function districtStyle(feature, warningsByCode) {
 	}
 }
 
-function DistrictLayer({ geojson, warningsByCode }) {
+function DistrictLayer({ geojson, warningsByCode, emptyText }) {
 	const style = useMemo(
 		() => (feature) => districtStyle(feature, warningsByCode),
 		[warningsByCode]
@@ -85,17 +85,20 @@ function DistrictLayer({ geojson, warningsByCode }) {
 			const title = code
 				? IPMA_AREAS[code]?.name ?? feature.properties.con_name
 				: feature.properties.con_name
-			layer.bindPopup(districtPopupHtml(title, list))
+			layer.bindPopup(districtPopupHtml(title, list, emptyText))
 		},
-		[warningsByCode]
+		[warningsByCode, emptyText]
 	)
 	// Force re-render when the warnings set changes (react-leaflet's GeoJSON
-	// caches the style function otherwise).
+	// caches the style function and popups otherwise). Includes level + start
+	// so switching period remounts even when per-area counts happen to match.
 	const key = useMemo(() => {
-		const parts = []
-		for (const [code, list] of warningsByCode) parts.push(`${code}:${list.length}`)
+		const parts = [emptyText]
+		for (const [code, list] of warningsByCode) {
+			parts.push(`${code}:${list.map((w) => `${w.awarenessLevelID}@${w.startTime}`).join(',')}`)
+		}
 		return parts.sort().join('|')
-	}, [warningsByCode])
+	}, [warningsByCode, emptyText])
 	return (
 		<GeoJSON key={key} data={geojson} style={style} onEachFeature={onEachFeature} />
 	)
@@ -177,6 +180,7 @@ export default function WarningsMap({
 	height = 'h-[75vh] min-h-[500px]',
 	showLegend = true,
 	stationsChecked = false,
+	emptyText = 'Sem avisos em vigor.',
 }) {
 	const warningsByCode = useMemo(() => {
 		const map = new Map()
@@ -214,7 +218,11 @@ export default function WarningsMap({
 				<LayersControl position="topleft">
 					<LayersControl.Overlay checked name="Avisos por região">
 						<LayerGroup>
-							<DistrictLayer geojson={geojson} warningsByCode={warningsByCode} />
+							<DistrictLayer
+								geojson={geojson}
+								warningsByCode={warningsByCode}
+								emptyText={emptyText}
+							/>
 						</LayerGroup>
 					</LayersControl.Overlay>
 					<LayersControl.Overlay checked={stationsChecked} name="Estações meteorológicas">
