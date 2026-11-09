@@ -22,6 +22,7 @@ import {
 	formatWhen,
 	formatWind,
 } from '../../utils/format.js'
+import { districtPath } from '../../utils/share.js'
 
 function esc(str) {
 	return String(str ?? '')
@@ -31,9 +32,14 @@ function esc(str) {
 		.replace(/"/g, '&quot;')
 }
 
-function districtPopupHtml(title, warnings, emptyText) {
+function districtLinkHtml(code) {
+	if (!code) return ''
+	return `<a href="${esc(districtPath(code))}" class="inline-block mt-2 text-xs font-semibold text-primary-700">Ver página de ${esc(IPMA_AREAS[code]?.name ?? code)} →</a>`
+}
+
+function districtPopupHtml(title, warnings, emptyText, code) {
 	if (!warnings || warnings.length === 0) {
-		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(title)}</p><p class="text-xs text-gray-500 mt-1 mb-0">${esc(emptyText)}</p></div>`
+		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(title)}</p><p class="text-xs text-gray-500 mt-1 mb-0">${esc(emptyText)}</p>${districtLinkHtml(code)}</div>`
 	}
 	const items = warnings
 		.map((w) => {
@@ -55,6 +61,7 @@ function districtPopupHtml(title, warnings, emptyText) {
 		<div class="min-w-[240px] max-w-[280px]">
 			<p class="font-bold text-gray-900 m-0 mb-2">${esc(title)}</p>
 			<ul class="list-none m-0 p-0 space-y-2">${items}</ul>
+			${districtLinkHtml(code)}
 		</div>
 	`
 }
@@ -85,7 +92,7 @@ function DistrictLayer({ geojson, warningsByCode, emptyText }) {
 			const title = code
 				? IPMA_AREAS[code]?.name ?? feature.properties.con_name
 				: feature.properties.con_name
-			layer.bindPopup(districtPopupHtml(title, list, emptyText))
+			layer.bindPopup(districtPopupHtml(title, list, emptyText, code))
 		},
 		[warningsByCode, emptyText]
 	)

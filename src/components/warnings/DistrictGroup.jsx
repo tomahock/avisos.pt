@@ -1,4 +1,7 @@
+import { Link } from 'react-router-dom'
+
 import WarningCard from './WarningCard.jsx'
+import { districtPath } from '../../utils/share.js'
 import ObservationStrip from './ObservationStrip.jsx'
 
 export default function DistrictGroup({ id, name, warnings, station }) {
@@ -6,7 +9,9 @@ export default function DistrictGroup({ id, name, warnings, station }) {
 		<section id={id} className="mt-10 scroll-mt-6">
 			<header className="text-center px-4">
 				<h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-					{name}
+					<Link to={districtPath(id)} className="text-inherit no-underline hover:underline">
+						{name}
+					</Link>
 				</h2>
 				<ObservationStrip station={station} />
 			</header>

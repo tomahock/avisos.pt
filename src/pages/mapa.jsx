@@ -8,6 +8,7 @@ import MapPeriodPicker from '../components/map/MapPeriodPicker.jsx'
 import WarningsMap from '../components/map/WarningsMap.jsx'
 import { fetchJson } from '../utils/fetchJson.js'
 import { usePageTitle } from '../utils/pageTitle.js'
+import { PAGE_META } from '../utils/share.js'
 import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
 
 const REGIONS = [
@@ -44,7 +45,9 @@ function subCollection(features) {
 }
 
 export default function MapPage() {
-	usePageTitle('Mapa · Avisos.pt')
+	usePageTitle(`${PAGE_META['/mapa'].title} · Avisos.pt`, {
+		description: PAGE_META['/mapa'].description,
+	})
 
 	const [warnings, setWarnings] = useState(null)
 	const [stations, setStations] = useState([])
