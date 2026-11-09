@@ -8,6 +8,7 @@ import IndexPage from './pages/index.jsx'
 
 // Split out the map bundle — Leaflet + GeoJSONs are only needed on /mapa.
 const MapPage = lazy(() => import('./pages/mapa.jsx'))
+const CronologiaPage = lazy(() => import('./pages/cronologia.jsx'))
 
 createRoot(document.getElementById('root')).render(
 	<StrictMode>
@@ -19,6 +20,14 @@ createRoot(document.getElementById('root')).render(
 					element={
 						<Suspense fallback={<div />}>
 							<MapPage />
+						</Suspense>
+					}
+				/>
+				<Route
+					path="/cronologia"
+					element={
+						<Suspense fallback={<div />}>
+							<CronologiaPage />
 						</Suspense>
 					}
 				/>
