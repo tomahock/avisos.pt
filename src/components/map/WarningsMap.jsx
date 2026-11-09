@@ -28,6 +28,7 @@ import {
 	formatWind,
 } from '../../utils/format.js'
 import { districtPath } from '../../utils/share.js'
+import { stationPath } from '../../utils/stations.js'
 
 function esc(str) {
 	return String(str ?? '')
@@ -250,6 +251,9 @@ function StationMarker({ feature, obs }) {
 							Sem leituras nesta hora.
 						</p>
 					)}
+					<a href={stationPath(id, props.localEstacao)} className="inline-block mt-2 text-xs font-semibold text-primary-700">
+						Ver estação →
+					</a>
 				</div>
 			</Popup>
 		</CircleMarker>

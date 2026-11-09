@@ -10,6 +10,8 @@ React 18 SPA (Vite + Tailwind 3 + react-router 6) that renders the currently act
 - `/cronologia` — hour-by-hour timeline (IPMA-style grid, but local time): overview matrix region × hour, or `?d=<IPMA code>` for one row per warning type + chronological list
 - `/distrito/<slug>` — one page per IPMA area (25): worst level, observations, timeline, warning cards, share buttons, links to every other area
 - `/distrito/<slug>/aviso/<tipo>-<AAAAMMDD-HHMM>` — one page per warning (shareable permalink; `noindex` because warnings expire — the page says "terminado" once FogosPT drops it)
+- `/estacoes` — every IPMA weather station with its latest reading, sortable (`?ordem=`, `?dir=`), region filter (`?regiao=`) and search (`?q=`), plus "mais quente / mais fria / vento / chuva" highlights
+- `/estacao/<id>-<nome>` — one station: current tiles, hourly charts (24 h–7 dias), daily min/max + rain (30 dias), district warning banner, nearby stations. Only the leading id is authoritative; other slugs are redirected (client) / canonicalised (server)
 - `/criterios` — IPMA warning-emission criteria (static, no API): colour meanings, thresholds per type for Continente/Madeira/Açores (`?regiao=`), Tempo Quente/Frio per district
 - `/mapa` — Leaflet map with district polygons colored by warning level + toggleable weather station markers. Period picker (Agora / Hoje / Amanhã / next days, `?dia=<offset>`) filters what the polygons and popups show
 
@@ -47,13 +49,18 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `functions/_fogos.js` — shared `proxyFogos({ env, path, cacheSeconds, transform?, label })` helper. Handles missing key (500), fetch failures (502), 30s timeout, logs status, sets `cache-control`, optionally transforms the JSON before returning it.
 - `functions/api/warnings.js` → `/v2/warnings/ipma`, 5 min cache.
 - `functions/api/stations.js` → `/v2/weather/stations/ipma`, 1 h cache (catalog rarely changes).
-- `functions/api/observations.js` → `/v2/weather/observations`, 10 min cache. **Trims to the latest hour server-side** — upstream returns 24 h × ~100 stations (~1 MB); we return `{ hour, stations }` for just the most recent hour.
+- `functions/api/observations.js` → `/v2/weather/observations`, 10 min cache. **Trims to the latest hour server-side** — upstream returns 24 h × ~190 stations (~1 MB); we return `{ hour, stations }` for just the most recent hour.
+- `functions/api/observations/recent.js` → same upstream, keeps 24 h for `?stations=<ids>` (≤ 40) — district-page sparklines and the station-page fallback.
+- `functions/api/stations/[id]/observations.js` → FogosPT `/v2/weather/stations/{id}/observations?hours=` (1–168, 10 min) and `[id]/daily.js` → `/v2/weather/stations/{id}/daily?days=` (1–90, 1 h). **These upstream endpoints were added in FogosPT/fogosapi#92**; until it's deployed the station page falls back to the 24 h slice and hides the range picker / daily section. They return `null` (not `-99`) for missing readings; `reading()` handles both.
 
-- `functions/_warnings.js` — `getWarnings(env)`: server-side warnings list (Cache API, 5 min) for the two functions below. `_fogos.js` exports `fetchFogosJson()` for it; `FOGOS_API_BASE` env overrides the upstream host (local mock only).
-- `functions/_middleware.js` — **the SPA is client-rendered but share bots don't run JS**, so every HTML response gets its `<title>`, description, canonical, robots, `og:*`, `twitter:*` and BreadcrumbList JSON-LD rewritten per route with `HTMLRewriter`. Unknown `/distrito/*` → 404. Any failure falls back to the static head — never blocks the page. Skips `/api/`, `/og/` and anything with a file extension.
-- `functions/og/[[path]].js` — 1200×630 PNG cards via `workers-og` (satori + resvg wasm, ~720 KB compressed in the functions bundle): `/og/site.png`, `/og/distrito/<slug>.png`, `/og/aviso/<slug>/<id>.png`. Fonts: Fira Sans latin subset fetched from jsDelivr (no arrows — use `–`). Satori: every multi-child `<div>` needs `display:flex`. The middleware appends `?v=<hash of the warnings>` so social networks refetch when warnings change. Cached 10 min.
+- `functions/_warnings.js` — `getWarnings` (5 min), `getStations` (1 h), `getLatestObservations` (10 min): server-side FogosPT data (Cache API) for the two functions below. `_fogos.js` exports `fetchFogosJson()` for it; `FOGOS_API_BASE` env overrides the upstream host (local mock only).
+- `functions/_middleware.js` — **the SPA is client-rendered but share bots don't run JS**, so every HTML response gets its `<title>`, description, canonical, robots, `og:*`, `twitter:*` and BreadcrumbList JSON-LD rewritten per route with `HTMLRewriter`. Unknown `/distrito/*` and `/estacao/*` → 404; `/estacao/<id>-<old-name>` gets the canonical of the current name. Any failure falls back to the static head — never blocks the page. Skips `/api/`, `/og/` and anything with a file extension.
+- `functions/og/[[path]].js` — 1200×630 PNG cards via `workers-og` (satori + resvg wasm, ~720 KB compressed in the functions bundle): `/og/site.png`, `/og/distrito/<slug>.png`, `/og/aviso/<slug>/<id>.png`, `/og/estacao/<id>.png` (current reading; band = district's worst warning). Fonts: Fira Sans latin subset fetched from jsDelivr (no arrows — use `–`). Satori: every multi-child `<div>` needs `display:flex`. The middleware appends `?v=<hash of the warnings>` so social networks refetch when warnings change. Cached 10 min.
 
 ### Shared server/client code
+
+- `src/utils/stations.js` — stations (also imported by functions): `stationPath`/`stationIdFromSlug`, `stationArea` (lookup in the generated `src/data/stationAreas.js`, nearest-centroid fallback), `stationRows(catalog, obs)`, `reading()` (−99 → null), `obsDate()` (UTC hour keys → Date), `fmtTemp/fmtMm/fmtKmh/fmtPct/fmtHpa` (pt-PT decimals), `stationSeo`.
+- `src/data/stationAreas.js` + the station block in `public/sitemap.xml` are **generated** by `node scripts/build-stations.mjs` (point-in-polygon of each station against the two GeoJSONs). Re-run it when IPMA adds/moves stations. Madeira mountain stations land in MCN/MCS (MRM has no polygon).
 
 - `src/utils/share.js` — imported by the browser **and** the functions: `SITE_URL`, `PAGE_META`/`DEFAULT_META` (static route titles/descriptions), `districtPath`, `warningSlug`/`warningPath`/`findWarning`, `districtSeo`/`warningSeo` (title + description), `formatLisbon` (always Europe/Lisbon, built from numeric parts so server and browser ICU agree), `warningsVersion`, `sortWarnings`. Keep it DOM/React-free.
 - Area slugs live in `ipmaAreas.js` (`slug`, `codeFromSlug`) and are a **URL contract** — never rename.
@@ -68,6 +75,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `src/components/timeline/TimelineGrid.jsx` — fixed label column + horizontally scrolling track (`CELL` = 24 px/hour). Per-hour worst level is collapsed into contiguous runs drawn as bars; hover/tap a column → inspector strip at the top. Midnight lines + "agora" marker are overlays.
 - `src/utils/timeline.js` — hour window (current hour → last `endTime`, clamped 48–96 h; no past since upstream drops ended warnings), `worstAt`, day grouping/labels, "começa/termina em".
 - `src/pages/distrito.jsx`, `src/pages/aviso.jsx` + `src/components/district/*` (Breadcrumb, DistrictTimeline, OtherAreas) + `src/components/share/ShareButtons.jsx` (native share / WhatsApp / Facebook / X / copy) + `src/hooks/{useWarningsData,useNow}.js`.
+- `src/pages/estacao.jsx`, `src/pages/estacoes.jsx`, `src/components/stations/*` — `StationChart` (hand-rolled SVG small multiples: `line` / `bar` / `range`, one hue, shared crosshair via lifted `hoverIdx`, sized by `useWidth`), `Sparkline`, `DistrictStations` (section on district pages). `src/hooks/useStationSeries.js` loads the hourly series with the 24 h fallback and the daily summaries.
 - `src/components/warnings/*` — cards, groups, overview chips (three sections: continental, Açores, Madeira), observation strip, state components.
 - `src/components/map/WarningsMap.jsx` — region-aware Leaflet map: takes `center/zoom/bounds/geojson/height`, filters stations by bbox, colors polygons per feature via `codeForFeature()`.
   - **Warning-type icons** (`WarningIconsLayer`, own toggle in the layers control): one Leaflet `divIcon` per area — a pill of FA icons, one per warning type, filled with that type's worst level (`LEVELS[…].fill`). Anchors (`map/anchors.js`): continental = bbox centre of the district's municipalities; islands = hand-picked `IPMA_AREAS[code].iconAt` (polygon maths fails there — Madeira's north/south/mountain zones don't follow concelhos, and Funchal's MultiPolygon includes the Selvagens at ~30°N). MRM has an `iconAt` too, so **MRM warnings do show on the map as an icon**. Hidden below zoom 6 (pills overlap). Follows the period picker like the polygons.
@@ -124,7 +132,7 @@ Observations (as trimmed by our proxy):
 
 - **`-99` in any numeric field means "no reading"** — always filter through `isValid()` in `utils/format.js`.
 - Missing stations for an hour are silently absent from `stations` — tolerate absence.
-- `idDireccVento`: `0=no wind, 1=N, 2=NE, 3=E, 4=SE, 5=S, 6=SW, 7=W, 8=NW, 9=N`.
+- `idDireccVento`: `0=no wind, 1=N, 2=NE, 3=E, 4=SE, 5=S, 6=SW, 7=W, 8=NW, 9=N`. Displayed with Portuguese letters (SO / O / NO) via `windDir()` in `format.js`.
 
 Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinates `[lng, lat]` (GeoJSON convention, remember to swap for Leaflet's `[lat, lng]`).
 
@@ -132,7 +140,7 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 
 - `index.html` has description, canonical, Open Graph, Twitter card, `WebSite` JSON-LD, preconnect to fonts. These are the **fallback** values — `functions/_middleware.js` rewrites them per route in production (and `og:image` to a generated `/og/*.png`). Plain `npm run dev` shows the fallbacks.
 - `public/robots.txt` — allows everything except `/api/`, points to sitemap.
-- `public/sitemap.xml` — lists `/`, `/cronologia`, `/mapa`, `/criterios` and the 25 `/distrito/<slug>` pages (warning pages are ephemeral and not listed).
+- `public/sitemap.xml` — lists `/`, `/cronologia`, `/mapa`, `/estacoes`, `/criterios`, the 25 `/distrito/<slug>` pages and the ~230 `/estacao/<slug>` pages (generated block; warning pages are ephemeral and not listed).
 - Per-page `<title>` via `usePageTitle()` in each page component.
 
 ## Style

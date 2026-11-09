@@ -4,6 +4,7 @@ const LINKS = [
 	{ to: '/', label: 'Avisos', end: true },
 	{ to: '/cronologia', label: 'Cronologia' },
 	{ to: '/mapa', label: 'Mapa' },
+	{ to: '/estacoes', label: 'Estações' },
 	{ to: '/criterios', label: 'Critérios' },
 ]
 

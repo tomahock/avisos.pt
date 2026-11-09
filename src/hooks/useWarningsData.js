@@ -8,6 +8,7 @@ export function useWarningsData() {
 	const [warnings, setWarnings] = useState(null)
 	const [stations, setStations] = useState([])
 	const [obs, setObs] = useState({})
+	const [obsHour, setObsHour] = useState(null)
 	const [error, setError] = useState(null)
 	const [updatedAt, setUpdatedAt] = useState(null)
 	const [reloadKey, setReloadKey] = useState(0)
@@ -24,7 +25,10 @@ export function useWarningsData() {
 			})
 		fetchJson('/api/stations', ctrl.signal).then(setStations).catch(() => {})
 		fetchJson('/api/observations', ctrl.signal)
-			.then((data) => setObs(data?.stations ?? {}))
+			.then((data) => {
+				setObs(data?.stations ?? {})
+				setObsHour(data?.hour ?? null)
+			})
 			.catch(() => {})
 		return () => ctrl.abort()
 	}, [reloadKey])
@@ -35,5 +39,5 @@ export function useWarningsData() {
 		setReloadKey((k) => k + 1)
 	}, [])
 
-	return { warnings, stations, obs, error, updatedAt, retry }
+	return { warnings, stations, obs, obsHour, error, updatedAt, retry }
 }

@@ -22,7 +22,8 @@ import {
 	warningsVersion,
 	areaWarnings,
 } from '../src/utils/share.js'
-import { getWarnings } from './_warnings.js'
+import { getLatestObservations, getStations, getWarnings } from './_warnings.js'
+import { stationIdFromSlug, stationRows, stationSeo } from '../src/utils/stations.js'
 
 function siteTitle(title) {
 	return title.includes(SITE_NAME) ? title : `${title} · ${SITE_NAME}`
@@ -55,6 +56,9 @@ async function metaFor(url, env, waitUntil) {
 			imageAlt: SITE_NAME,
 		}
 	}
+
+	const st = path.match(/^\/estacao\/([a-z0-9-]+)$/)
+	if (st) return stationMeta(st[1], path, env, waitUntil)
 
 	const m = path.match(/^\/distrito\/([a-z0-9-]+)(?:\/aviso\/([a-z0-9-]+))?$/)
 	if (!m) return { ...DEFAULT, path, robots: 'noindex, follow', status: 404 }
@@ -113,6 +117,51 @@ async function metaFor(url, env, waitUntil) {
 		imageAlt: seo.title,
 		robots: 'noindex, follow',
 		breadcrumb: [...breadcrumb, { name: seo.title, path: seo.path }],
+	}
+}
+
+async function stationMeta(slug, path, env, waitUntil) {
+	const id = stationIdFromSlug(slug)
+	const notFound = {
+		...DEFAULT,
+		title: siteTitle('Estação não encontrada'),
+		path,
+		robots: 'noindex, follow',
+		status: 404,
+	}
+	if (id == null) return notFound
+
+	let catalog
+	try {
+		catalog = await getStations(env, waitUntil)
+	} catch (err) {
+		console.error('[seo] stations unavailable:', err.message)
+		return { ...STATIC_PAGES['/estacoes'], title: siteTitle('Estação meteorológica'), path, image: '/og/site.png' }
+	}
+	const feature = catalog.find((f) => f?.properties?.idEstacao === id)
+	if (!feature) return notFound
+
+	let latest = { hour: null, stations: {} }
+	try {
+		latest = await getLatestObservations(env, waitUntil)
+	} catch (err) {
+		console.error('[seo] observations unavailable:', err.message)
+	}
+	const [row] = stationRows([feature], latest.stations)
+	const seo = stationSeo(row, latest.hour)
+	const breadcrumb = [
+		{ name: SITE_NAME, path: '/' },
+		{ name: 'Estações', path: '/estacoes' },
+		...(row.area ? [{ name: IPMA_AREAS[row.area].name, path: `/distrito/${IPMA_AREAS[row.area].slug}` }] : []),
+		{ name: row.name, path: seo.path },
+	]
+	return {
+		title: siteTitle(seo.title),
+		description: seo.description,
+		path: seo.path,
+		image: `/og/estacao/${id}.png?v=${warningsVersion([{ startTime: latest.hour ?? '', text: JSON.stringify(row.obs ?? {}) }])}`,
+		imageAlt: `Condições atuais na estação ${row.name}`,
+		breadcrumb,
 	}
 }
 
