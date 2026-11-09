@@ -12,6 +12,8 @@ const CronologiaPage = lazy(() => import('./pages/cronologia.jsx'))
 const CriteriosPage = lazy(() => import('./pages/criterios.jsx'))
 const DistritoPage = lazy(() => import('./pages/distrito.jsx'))
 const AvisoPage = lazy(() => import('./pages/aviso.jsx'))
+const EstacoesPage = lazy(() => import('./pages/estacoes.jsx'))
+const EstacaoPage = lazy(() => import('./pages/estacao.jsx'))
 
 createRoot(document.getElementById('root')).render(
 	<StrictMode>
@@ -55,6 +57,22 @@ createRoot(document.getElementById('root')).render(
 					element={
 						<Suspense fallback={<div />}>
 							<AvisoPage />
+						</Suspense>
+					}
+				/>
+				<Route
+					path="/estacoes"
+					element={
+						<Suspense fallback={<div />}>
+							<EstacoesPage />
+						</Suspense>
+					}
+				/>
+				<Route
+					path="/estacao/:slug"
+					element={
+						<Suspense fallback={<div />}>
+							<EstacaoPage />
 						</Suspense>
 					}
 				/>

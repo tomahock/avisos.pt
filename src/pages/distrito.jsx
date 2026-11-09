@@ -10,6 +10,7 @@ import WarningCard from '../components/warnings/WarningCard.jsx'
 import Breadcrumb from '../components/district/Breadcrumb.jsx'
 import DistrictTimeline from '../components/district/DistrictTimeline.jsx'
 import OtherAreas from '../components/district/OtherAreas.jsx'
+import DistrictStations from '../components/stations/DistrictStations.jsx'
 import { IPMA_AREAS, areaCentroid, codeFromSlug } from '../data/ipmaAreas.js'
 import { levelMeta, worstLevelId } from '../data/levels.js'
 import { useNow } from '../hooks/useNow.js'
@@ -133,6 +134,8 @@ function District({ code }) {
 					<Link to="/mapa" className="text-primary-700">Ver no mapa</Link>
 					<Link to="/criterios" className="text-primary-700">Critérios dos avisos</Link>
 				</p>
+
+				<DistrictStations code={code} name={area.name} catalog={stations} obs={obs} />
 
 				<OtherAreas current={code} warnings={warnings} />
 			</div>

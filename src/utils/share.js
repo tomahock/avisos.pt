@@ -33,6 +33,11 @@ export const PAGE_META = {
 		description:
 			'Mapa dos avisos meteorológicos do IPMA em Portugal continental, Açores e Madeira, para agora e para os próximos dias, com estações meteorológicas.',
 	},
+	'/estacoes': {
+		title: 'Estações meteorológicas IPMA — temperatura, vento e chuva agora',
+		description:
+			'Todas as estações meteorológicas do IPMA em Portugal com a última leitura: onde está mais quente, mais frio, mais vento e mais chuva agora, por distrito.',
+	},
 	'/criterios': {
 		title: 'Critérios de emissão de avisos meteorológicos do IPMA',
 		description:

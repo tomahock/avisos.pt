@@ -17,6 +17,7 @@ export function formatPrecip(v) {
 	return isValid(v) ? `${v.toFixed(1).replace(/\.0$/, '')} mm` : null
 }
 
+// Portuguese compass letters (O = oeste).
 const WIND_DIR = {
 	0: null, // no wind
 	1: 'N',
@@ -24,10 +25,14 @@ const WIND_DIR = {
 	3: 'E',
 	4: 'SE',
 	5: 'S',
-	6: 'SW',
-	7: 'W',
-	8: 'NW',
+	6: 'SO',
+	7: 'O',
+	8: 'NO',
 	9: 'N',
+}
+
+export function windDir(id) {
+	return WIND_DIR[id] ?? null
 }
 
 export function formatWind(kmh, dirId) {

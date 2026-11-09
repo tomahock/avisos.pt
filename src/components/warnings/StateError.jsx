@@ -1,11 +1,11 @@
-export default function StateError({ message, onRetry }) {
+export default function StateError({ message, onRetry, title = 'Não foi possível carregar os avisos' }) {
 	return (
 		<div className="mt-16 px-6 text-center">
 			<div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100">
 				<i className="fas fa-triangle-exclamation text-3xl text-red-600" aria-hidden />
 			</div>
 			<h2 className="mt-6 text-2xl font-bold text-gray-900 tracking-tight">
-				Não foi possível carregar os avisos
+				{title}
 			</h2>
 			{message && <p className="mt-2 text-sm text-gray-500">{message}</p>}
 			{onRetry && (

@@ -2,6 +2,7 @@
 //   /og/site.png                         — national overview
 //   /og/distrito/<slug>.png              — one district/region
 //   /og/aviso/<slug>/<warning-id>.png    — one warning
+//   /og/estacao/<id>.png                 — one weather station (current reading)
 //
 // Rendered with satori/resvg (workers-og) from an HTML string. Satori rules:
 // every <div> with more than one child needs display:flex, and there are no
@@ -22,7 +23,8 @@ import {
 	formatRange,
 	levelLabel,
 } from '../../src/utils/share.js'
-import { getWarnings } from '../_warnings.js'
+import { getLatestObservations, getStations, getWarnings } from '../_warnings.js'
+import { fmtKmh, fmtMm, fmtPct, fmtTemp, obsDate, reading, stationRows, windDir } from '../../src/utils/stations.js'
 
 const W = 1200
 const H = 630
@@ -154,6 +156,38 @@ function siteCard(warnings) {
 	return frame(worstAll, body)
 }
 
+function stationCard(row, hour, warnings) {
+	const area = row.area ? IPMA_AREAS[row.area] : null
+	const worst = warnings && row.area ? worstLevelId(areaWarnings(warnings, row.area)) : null
+	const o = row.obs
+	const temp = fmtTemp(reading(o, 'temperatura'))
+	const wind = reading(o, 'intensidadeVentoKM')
+	const stats = [
+		['Vento', wind != null ? `${fmtKmh(wind)}${windDir(reading(o, 'idDireccVento')) ? ` ${windDir(reading(o, 'idDireccVento'))}` : ''}` : null],
+		['Chuva 1 h', fmtMm(reading(o, 'precAcumulada'))],
+		['Humidade', fmtPct(reading(o, 'humidade'))],
+	].filter(([, v]) => v)
+	const when = obsDate(hour)
+	const body = `
+		<div style="display:flex;font-size:26px;color:${MUTED}">Estação meteorológica IPMA${area ? ` · ${esc(area.name)}` : ''}</div>
+		<div style="display:flex;font-size:60px;font-weight:700;line-height:1.05;margin-top:8px">${esc(truncate(row.name, 34))}</div>
+		<div style="display:flex;align-items:flex-end;margin-top:26px">
+			<div style="display:flex;font-size:132px;font-weight:700;line-height:1">${esc(temp ?? '—')}</div>
+			<div style="display:flex;flex-direction:column;margin-left:56px;margin-bottom:10px">
+				${stats
+					.map(
+						([k, v]) =>
+							`<div style="display:flex;font-size:32px;margin-top:8px"><div style="display:flex;color:${MUTED};width:190px">${esc(k)}</div><div style="display:flex;font-weight:700">${esc(v)}</div></div>`
+					)
+					.join('')}
+			</div>
+		</div>
+		<div style="display:flex;font-size:26px;color:${MUTED};margin-top:22px">${
+			o && when ? `Leitura das ${esc(formatLisbonInstant(when.getTime()))}` : 'Sem leitura na última hora'
+		}</div>`
+	return frame(worst, body)
+}
+
 function notFound() {
 	return new Response('Not found', { status: 404 })
 }
@@ -187,6 +221,28 @@ export async function onRequestGet(context) {
 		if (!code) return notFound()
 		const w = warnings ? findWarning(warnings, code, last) : null
 		html = w ? warningCard(w) : warnings ? districtCard(code, warnings) : siteCard(null)
+	} else if (parts.length === 2 && parts[0] === 'estacao') {
+		const id = Number(last)
+		if (!Number.isInteger(id)) return notFound()
+		let catalog
+		try {
+			catalog = await getStations(env, context.waitUntil.bind(context))
+		} catch {
+			catalog = null
+		}
+		const feature = catalog?.find((f) => f?.properties?.idEstacao === id)
+		if (catalog && !feature) return notFound()
+		if (!feature) {
+			html = siteCard(warnings)
+		} else {
+			let latest = { hour: null, stations: {} }
+			try {
+				latest = await getLatestObservations(env, context.waitUntil.bind(context))
+			} catch {
+				// card without readings
+			}
+			html = stationCard(stationRows([feature], latest.stations)[0], latest.hour, warnings)
+		}
 	} else {
 		return notFound()
 	}
