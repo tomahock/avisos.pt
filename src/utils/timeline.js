@@ -1,0 +1,165 @@
+import { LEVELS } from '../data/levels.js'
+
+const HOUR = 3600 * 1000
+
+// Timeline window: hourly slots from the current hour up to the last
+// warning's endTime. FogosPT only returns warnings with endTime >= now, so
+// there is nothing to show in the past. Clamped to [MIN_HOURS, MAX_HOURS] so
+// the grid never collapses to a few cells nor runs off for a week.
+const MIN_HOURS = 48
+const MAX_HOURS = 96
+
+// FogosPT timestamps are ISO without a timezone, as Lisbon wall-clock time.
+// `new Date(iso)` would read them in the visitor's timezone, shifting every
+// warning for anyone outside Portugal — resolve them to absolute instants
+// against Europe/Lisbon instead, and only localize when displaying.
+const SOURCE_TZ = 'Europe/Lisbon'
+const tzParts = new Intl.DateTimeFormat('en-US', {
+	timeZone: SOURCE_TZ,
+	hourCycle: 'h23',
+	year: 'numeric',
+	month: 'numeric',
+	day: 'numeric',
+	hour: 'numeric',
+	minute: 'numeric',
+	second: 'numeric',
+})
+
+// Offset (ms) of SOURCE_TZ from UTC at instant `ts`.
+function tzOffset(ts) {
+	const p = {}
+	for (const { type, value } of tzParts.formatToParts(new Date(ts))) p[type] = +value
+	return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - ts
+}
+
+const cache = new Map()
+
+export function parseWarningTime(iso) {
+	if (typeof iso !== 'string') return NaN
+	let ts = cache.get(iso)
+	if (ts !== undefined) return ts
+	const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/)
+	if (!m || /(Z|[+-]\d{2}:?\d{2})$/.test(iso)) {
+		ts = new Date(iso).getTime()
+	} else {
+		const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] ?? 0))
+		// Two passes so instants next to a DST switch pick the right offset.
+		ts = wall - tzOffset(wall)
+		ts = wall - tzOffset(ts)
+	}
+	cache.set(iso, ts)
+	return ts
+}
+
+const start = (w) => parseWarningTime(w.startTime)
+const end = (w) => parseWarningTime(w.endTime)
+
+// Warning time as the visitor's local "dd/mm, HH:MM".
+export function formatWarningTime(iso) {
+	const ts = parseWarningTime(iso)
+	if (!Number.isFinite(ts)) return iso
+	return new Date(ts).toLocaleString('pt-PT', {
+		day: '2-digit',
+		month: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+	})
+}
+
+export function floorHour(d) {
+	const t = new Date(d)
+	t.setMinutes(0, 0, 0)
+	return t
+}
+
+export function buildHours(warnings, now = new Date()) {
+	const first = floorHour(now).getTime()
+	let last = first + MIN_HOURS * HOUR
+	for (const w of warnings) {
+		const e = end(w)
+		if (Number.isFinite(e) && e > last) last = e
+	}
+	last = Math.min(last, first + MAX_HOURS * HOUR)
+	const count = Math.ceil((last - first) / HOUR)
+	return Array.from({ length: count }, (_, i) => new Date(first + i * HOUR))
+}
+
+// Warnings overlapping the slot [hour, hour + 1h).
+export function warningsAt(warnings, hour) {
+	const s = hour.getTime()
+	const e = s + HOUR
+	return warnings.filter((w) => start(w) < e && end(w) > s)
+}
+
+// Worst awarenessLevelID active during the slot, or null.
+export function worstAt(warnings, hour) {
+	let worst = null
+	let pri = 0
+	for (const w of warningsAt(warnings, hour)) {
+		const p = LEVELS[w.awarenessLevelID]?.priority ?? 0
+		if (p > pri) {
+			pri = p
+			worst = w.awarenessLevelID
+		}
+	}
+	return worst
+}
+
+// Group consecutive hours into calendar days for the header row.
+export function groupDays(hours) {
+	const days = []
+	for (const h of hours) {
+		const key = h.toDateString()
+		const last = days[days.length - 1]
+		if (last && last.key === key) last.span++
+		else days.push({ key, date: h, span: 1 })
+	}
+	return days
+}
+
+export function dayLabel(date, now = new Date()) {
+	const diff = Math.round(
+		(floorDay(date).getTime() - floorDay(now).getTime()) / (24 * HOUR)
+	)
+	const weekday = date.toLocaleDateString('pt-PT', { weekday: 'short' })
+	const dm = date.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })
+	if (diff === 0) return { main: 'Hoje', sub: `${weekday}, ${dm}` }
+	if (diff === 1) return { main: 'Amanhã', sub: `${weekday}, ${dm}` }
+	return { main: capitalize(weekday.replace('.', '')), sub: dm }
+}
+
+function floorDay(d) {
+	const t = new Date(d)
+	t.setHours(0, 0, 0, 0)
+	return t
+}
+
+function capitalize(s) {
+	return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+export function formatHour(d) {
+	return String(d.getHours()).padStart(2, '0')
+}
+
+// "começa em 3 h" / "termina em 40 min" / "terminou".
+export function relativeWindow(w, now = new Date()) {
+	const s = start(w)
+	const e = end(w)
+	const t = now.getTime()
+	if (t < s) return { active: false, text: `começa ${inDuration(s - t)}` }
+	if (t < e) return { active: true, text: `termina ${inDuration(e - t)}` }
+	return { active: false, text: 'terminou' }
+}
+
+function inDuration(ms) {
+	const mins = Math.round(ms / 60000)
+	if (mins < 60) return `em ${mins} min`
+	const hours = Math.round(mins / 60)
+	if (hours < 48) return `em ${hours} h`
+	return `em ${Math.round(hours / 24)} dias`
+}
+
+export function durationHours(w) {
+	return Math.round((end(w) - start(w)) / HOUR)
+}

@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 
 const LINKS = [
 	{ to: '/', label: 'Avisos', end: true },
+	{ to: '/cronologia', label: 'Cronologia' },
 	{ to: '/mapa', label: 'Mapa' },
 ]
 
