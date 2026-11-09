@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import Layout from '../layouts/index.jsx'
+import NotFound from '../components/layout/NotFound.jsx'
 import ObservationStrip from '../components/warnings/ObservationStrip.jsx'
 import ShareButtons from '../components/share/ShareButtons.jsx'
 import StateError from '../components/warnings/StateError.jsx'
@@ -25,24 +26,10 @@ const REGION_LABEL = {
 	madeira: 'Arquipélago da Madeira',
 }
 
-function NotFound() {
-	usePageTitle('Distrito não encontrado · Avisos.pt', { robots: 'noindex, follow' })
-	return (
-		<Layout>
-			<div className="mt-16 px-6 text-center">
-				<h1 className="text-2xl font-bold text-gray-900">Distrito não encontrado</h1>
-				<p className="mt-2 text-gray-500">
-					<Link to="/" className="text-primary-700">Ver todos os avisos</Link>
-				</p>
-			</div>
-		</Layout>
-	)
-}
-
 export default function DistritoPage() {
 	const { slug } = useParams()
 	const code = codeFromSlug(slug)
-	if (!code) return <NotFound />
+	if (!code) return <NotFound title="Distrito não encontrado" message="Este distrito ou região não existe. Escolha um na lista de avisos ou no mapa." />
 	return <District code={code} />
 }
 

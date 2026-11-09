@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 
 import IndexPage from './pages/index.jsx'
+import NotFound from './components/layout/NotFound.jsx'
 
 // Split out the map bundle — Leaflet + GeoJSONs are only needed on /mapa.
 const MapPage = lazy(() => import('./pages/mapa.jsx'))
@@ -76,6 +77,7 @@ createRoot(document.getElementById('root')).render(
 						</Suspense>
 					}
 				/>
+				<Route path="*" element={<NotFound />} />
 			</Routes>
 		</BrowserRouter>
 	</StrictMode>

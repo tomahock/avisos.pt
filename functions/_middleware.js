@@ -25,6 +25,16 @@ import {
 import { getLatestObservations, getStations, getWarnings } from './_warnings.js'
 import { stationIdFromSlug, stationRows, stationSeo } from '../src/utils/stations.js'
 
+// Any unknown URL: real 404 + noindex (the SPA renders the "Página não
+// encontrada" page from the same index.html).
+const NOT_FOUND = (path) => ({
+	title: 'Página não encontrada · Avisos.pt',
+	description: 'Esta página não existe ou mudou de sítio. Consulte os avisos meteorológicos em vigor em Portugal.',
+	path,
+	robots: 'noindex, follow',
+	status: 404,
+})
+
 function siteTitle(title) {
 	return title.includes(SITE_NAME) ? title : `${title} · ${SITE_NAME}`
 }
@@ -61,7 +71,7 @@ async function metaFor(url, env, waitUntil) {
 	if (st) return stationMeta(st[1], path, env, waitUntil)
 
 	const m = path.match(/^\/distrito\/([a-z0-9-]+)(?:\/aviso\/([a-z0-9-]+))?$/)
-	if (!m) return { ...DEFAULT, path, robots: 'noindex, follow', status: 404 }
+	if (!m) return NOT_FOUND(path)
 
 	const code = codeFromSlug(m[1])
 	if (!code) {
@@ -226,13 +236,19 @@ export async function onRequest(context) {
 	const { request, next, env } = context
 	const url = new URL(request.url)
 
-	if (
-		request.method !== 'GET' ||
-		url.pathname.startsWith('/api/') ||
-		url.pathname.startsWith('/og/') ||
-		/\.[a-z0-9]+$/i.test(url.pathname)
-	) {
-		return next()
+	if (request.method !== 'GET' || url.pathname.startsWith('/og/')) return next()
+
+	// Files and API routes pass through untouched — except that Pages answers a
+	// *missing* one with the SPA's index.html and a 200 (e.g. /sitemap.xlm,
+	// /api/nope). Turn those soft 404s into real ones.
+	const isApi = url.pathname.startsWith('/api/')
+	if (isApi || /\.[a-z0-9]+$/i.test(url.pathname)) {
+		const res = await next()
+		const html = (res.headers.get('content-type') ?? '').includes('text/html')
+		if (!html || /\.html?$/i.test(url.pathname)) return res
+		if (isApi) return new Response(JSON.stringify({ error: 'not_found' }), { status: 404, headers: { 'content-type': 'application/json; charset=utf-8' } })
+		const out = rewrite(res, NOT_FOUND(url.pathname))
+		return new Response(out.body, { status: 404, headers: out.headers })
 	}
 
 	const res = await next()
