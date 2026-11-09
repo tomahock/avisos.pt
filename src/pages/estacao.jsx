@@ -69,7 +69,11 @@ function Summary({ points }) {
 	if (temps.length === 0) return null
 	const max = temps.reduce((a, p) => (p.temperatura > a.temperatura ? p : a))
 	const min = temps.reduce((a, p) => (p.temperatura < a.temperatura ? p : a))
-	const rain = points.reduce((s, p) => s + (p.precAcumulada ?? 0), 0)
+	// Missing rain readings are not zero: hide the total when nothing was
+	// measured and flag it when some hours are missing.
+	const rainPts = points.filter((p) => p.precAcumulada != null)
+	const rain = rainPts.reduce((s, p) => s + p.precAcumulada, 0)
+	const rainMissing = points.length - rainPts.length
 	const wind = points.filter((p) => p.intensidadeVentoKM != null)
 	const windMax = wind.length ? wind.reduce((a, p) => (p.intensidadeVentoKM > a.intensidadeVentoKM ? p : a)) : null
 	return (
@@ -80,9 +84,14 @@ function Summary({ points }) {
 			<span>
 				Mín. <strong className="text-gray-900 tabular-nums">{fmtTemp(min.temperatura)}</strong> {dayHourFmt(min.t)}
 			</span>
-			<span>
-				Chuva acumulada <strong className="text-gray-900 tabular-nums">{fmtMm(rain)}</strong>
-			</span>
+			{rainPts.length > 0 && (
+				<span>
+					Chuva acumulada <strong className="text-gray-900 tabular-nums">{rainMissing > 0 ? '≥ ' : ''}{fmtMm(rain)}</strong>
+					{rainMissing > 0 && (
+						<span className="text-gray-500"> ({rainMissing} h sem dados)</span>
+					)}
+				</span>
+			)}
 			{windMax && (
 				<span>
 					Vento médio máx. <strong className="text-gray-900 tabular-nums">{fmtKmh(windMax.intensidadeVentoKM)}</strong>
@@ -276,7 +285,7 @@ export default function EstacaoPage() {
 	const { slug } = useParams()
 	const navigate = useNavigate()
 	const id = stationIdFromSlug(slug)
-	const { warnings, stations, obs, obsHour, error, updatedAt, retry } = useWarningsData()
+	const { warnings, stations, stationsStatus, obs, obsHour, updatedAt, retry } = useWarningsData()
 
 	const rows = useMemo(() => stationRows(stations, obs), [stations, obs])
 	const station = rows.find((r) => r.id === id) ?? null
@@ -291,14 +300,16 @@ export default function EstacaoPage() {
 		if (station && `/estacao/${slug}` !== seo.path) navigate(seo.path, { replace: true })
 	}, [station, slug, seo?.path, navigate])
 
-	if (error) {
+	// The station page only needs the catalog; a warnings failure just hides
+	// the warning banner.
+	if (stationsStatus === 'error') {
 		return (
 			<Layout>
-				<StateError message={error} onRetry={retry} />
+				<StateError title="Não foi possível carregar as estações" message="A lista de estações meteorológicas não está disponível de momento." onRetry={retry} />
 			</Layout>
 		)
 	}
-	if (stations.length === 0 && !warnings) {
+	if (stationsStatus === 'loading') {
 		return (
 			<Layout>
 				<StateLoading />
@@ -309,14 +320,8 @@ export default function EstacaoPage() {
 		return (
 			<Layout updatedAt={updatedAt}>
 				<div className="mt-16 px-6 text-center">
-					{stations.length === 0 ? (
-						<StateLoading />
-					) : (
-						<>
-							<h1 className="text-2xl font-bold text-gray-900">Estação não encontrada</h1>
-							<Link to="/estacoes" className="text-primary-700">Ver todas as estações</Link>
-						</>
-					)}
+					<h1 className="text-2xl font-bold text-gray-900">Estação não encontrada</h1>
+					<Link to="/estacoes" className="text-primary-700">Ver todas as estações</Link>
 				</div>
 			</Layout>
 		)

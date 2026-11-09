@@ -7,6 +7,9 @@ import { fetchJson } from '../utils/fetchJson.js'
 export function useWarningsData() {
 	const [warnings, setWarnings] = useState(null)
 	const [stations, setStations] = useState([])
+	// Station-dependent pages need to tell "still loading" from "failed";
+	// the warnings pages just ignore these.
+	const [stationsStatus, setStationsStatus] = useState('loading')
 	const [obs, setObs] = useState({})
 	const [obsHour, setObsHour] = useState(null)
 	const [error, setError] = useState(null)
@@ -23,7 +26,15 @@ export function useWarningsData() {
 			.catch((err) => {
 				if (err.name !== 'AbortError') setError(err.message)
 			})
-		fetchJson('/api/stations', ctrl.signal).then(setStations).catch(() => {})
+		setStationsStatus('loading')
+		fetchJson('/api/stations', ctrl.signal)
+			.then((data) => {
+				setStations(Array.isArray(data) ? data : [])
+				setStationsStatus('ready')
+			})
+			.catch((err) => {
+				if (err.name !== 'AbortError') setStationsStatus('error')
+			})
 		fetchJson('/api/observations', ctrl.signal)
 			.then((data) => {
 				setObs(data?.stations ?? {})
@@ -39,5 +50,5 @@ export function useWarningsData() {
 		setReloadKey((k) => k + 1)
 	}, [])
 
-	return { warnings, stations, obs, obsHour, error, updatedAt, retry }
+	return { warnings, stations, stationsStatus, obs, obsHour, error, updatedAt, retry }
 }

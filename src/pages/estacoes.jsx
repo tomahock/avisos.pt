@@ -60,7 +60,7 @@ function extreme(rows, field, pick) {
 export default function EstacoesPage() {
 	usePageTitle(`${PAGE_META['/estacoes'].title} · Avisos.pt`, { description: PAGE_META['/estacoes'].description })
 
-	const { stations, obs, obsHour, warnings, error, updatedAt, retry } = useWarningsData()
+	const { stations, stationsStatus, obs, obsHour, warnings, error, updatedAt, retry } = useWarningsData()
 	const [params, setParams] = useSearchParams()
 	const region = params.get('regiao') ?? ''
 	const sortKey = COLUMNS.some((c) => c.key === params.get('ordem')) ? params.get('ordem') : 'temperatura'
@@ -99,14 +99,14 @@ export default function EstacoesPage() {
 		})
 	}, [inRegion, q, sortKey, sortDir])
 
-	if (error) {
+	if (stationsStatus === 'error') {
 		return (
 			<Layout>
-				<StateError message={error} onRetry={retry} />
+				<StateError title="Não foi possível carregar as estações" message="A lista de estações meteorológicas não está disponível de momento." onRetry={retry} />
 			</Layout>
 		)
 	}
-	if (stations.length === 0) {
+	if (stationsStatus === 'loading') {
 		return (
 			<Layout>
 				<StateLoading />

@@ -5,15 +5,30 @@ import { obsDate, reading } from '../utils/stations.js'
 
 const FIELDS = ['temperatura', 'humidade', 'pressao', 'precAcumulada', 'intensidadeVentoKM', 'idDireccVento']
 
+const HOUR = 3600 * 1000
+
+// Readings → one point per hour from the first to the last reading. The
+// FogosPT series only contains hours the station reported, and StationChart
+// spaces points by index, so missing hours must become explicit empty points
+// (the line breaks there) rather than vanish.
 function normalize(rows, dateKey) {
-	return rows
-		.map((r) => {
-			const p = { t: obsDate(r[dateKey]) }
-			for (const f of FIELDS) p[f] = reading(r, f)
-			return p
-		})
-		.filter((p) => p.t)
-		.sort((a, b) => a.t - b.t)
+	const byHour = new Map()
+	for (const r of rows) {
+		const t = obsDate(r[dateKey])
+		if (!t) continue
+		const p = { t }
+		for (const f of FIELDS) p[f] = reading(r, f)
+		byHour.set(Math.floor(t.getTime() / HOUR), p)
+	}
+	if (byHour.size === 0) return []
+	const keys = [...byHour.keys()]
+	const first = Math.min(...keys)
+	const last = Math.max(...keys)
+	const out = []
+	for (let h = first; h <= last; h++) {
+		out.push(byHour.get(h) ?? Object.fromEntries([['t', new Date(h * HOUR)], ...FIELDS.map((f) => [f, null])]))
+	}
+	return out
 }
 
 // Hourly series for one station.
