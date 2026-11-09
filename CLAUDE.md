@@ -139,6 +139,7 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 ## SEO artifacts
 
 - `index.html` has description, canonical, Open Graph, Twitter card, `WebSite` JSON-LD, preconnect to fonts. These are the **fallback** values — `functions/_middleware.js` rewrites them per route in production (and `og:image` to a generated `/og/*.png`). Plain `npm run dev` shows the fallbacks.
+- `public/manifest.json` — installable app ("Avisos.pt", pt-PT, theme `#dc2626`). Icons in `public/imgs/`: `icon-192/512.png` (transparent, `any`), `icon-maskable-512.png` and `apple-touch-icon.png` (opaque white, logo inside the 80% safe zone) — all generated from `logo.png` with its transparent margin cropped. Regenerate them if the logo changes.
 - `public/robots.txt` — allows everything except `/api/`, points to sitemap.
 - `public/sitemap.xml` — lists `/`, `/cronologia`, `/mapa`, `/estacoes`, `/criterios`, the 25 `/distrito/<slug>` pages and the ~230 `/estacao/<slug>` pages (generated block; warning pages are ephemeral and not listed).
 - Per-page `<title>` via `usePageTitle()` in each page component.
