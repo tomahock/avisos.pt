@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import Layout from '../layouts/index.jsx'
+import NotFound from '../components/layout/NotFound.jsx'
 import Breadcrumb from '../components/district/Breadcrumb.jsx'
 import ShareButtons from '../components/share/ShareButtons.jsx'
 import StateError from '../components/warnings/StateError.jsx'
@@ -293,9 +294,13 @@ export default function EstacaoPage() {
 	const station = rows.find((r) => r.id === id) ?? null
 	const seo = station ? stationSeo(station, obsHour) : null
 
-	usePageTitle(seo ? `${seo.title} · Avisos.pt` : 'Estação meteorológica · Avisos.pt', {
-		description: seo?.description,
-	})
+	// Set here, not only in <NotFound>: the parent's effect runs after the
+	// child's and would otherwise overwrite title/robots on unknown stations.
+	const missing = stationsStatus === 'ready' && !station
+	usePageTitle(
+		seo ? `${seo.title} · Avisos.pt` : missing ? 'Estação não encontrada · Avisos.pt' : 'Estação meteorológica · Avisos.pt',
+		{ description: seo?.description, robots: missing ? 'noindex, follow' : undefined }
+	)
 
 	// Old/renamed slug → canonical URL, without a history entry.
 	useEffect(() => {
@@ -319,14 +324,7 @@ export default function EstacaoPage() {
 		)
 	}
 	if (!station) {
-		return (
-			<Layout updatedAt={updatedAt}>
-				<div className="mt-16 px-6 text-center">
-					<h1 className="text-2xl font-bold text-gray-900">Estação não encontrada</h1>
-					<Link to="/estacoes" className="text-primary-700">Ver todas as estações</Link>
-				</div>
-			</Layout>
-		)
+		return <NotFound title="Estação não encontrada" message="Esta estação meteorológica não existe ou deixou de reportar ao IPMA." />
 	}
 
 	const area = station.area ? IPMA_AREAS[station.area] : null

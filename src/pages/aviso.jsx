@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import Layout from '../layouts/index.jsx'
+import NotFound from '../components/layout/NotFound.jsx'
 import ShareButtons from '../components/share/ShareButtons.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
@@ -101,7 +102,7 @@ export default function AvisoPage() {
 
 	const name = code ? IPMA_AREAS[code].name : 'Aviso'
 	const seo = warning ? warningSeo(warning) : null
-	usePageTitle(seo ? `${seo.title} · Avisos.pt` : `Aviso terminado — ${name} · Avisos.pt`, {
+	usePageTitle(seo ? `${seo.title} · Avisos.pt` : code ? `Aviso terminado — ${name} · Avisos.pt` : 'Distrito não encontrado · Avisos.pt', {
 		description: seo?.description,
 		// Warnings expire; keep them out of the index (district pages are the
 		// durable URLs). Matches functions/_middleware.js.
@@ -123,14 +124,7 @@ export default function AvisoPage() {
 		)
 	}
 	if (!code) {
-		return (
-			<Layout>
-				<div className="mt-16 px-6 text-center">
-					<h1 className="text-2xl font-bold text-gray-900">Distrito não encontrado</h1>
-					<Link to="/" className="text-primary-700">Ver todos os avisos</Link>
-				</div>
-			</Layout>
-		)
+		return <NotFound title="Distrito não encontrado" message="Este distrito ou região não existe. Escolha um na lista de avisos ou no mapa." />
 	}
 
 	return (
