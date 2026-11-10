@@ -13,7 +13,7 @@ export const LEVELS = {
 		bar: 'bg-red-600',
 		chip: 'bg-red-600 text-white',
 		border: 'border-red-600',
-		text: 'text-red-700',
+		text: 'text-red-700 dark:text-red-400',
 		fill: '#dc2626',
 	},
 	orange: {
@@ -22,16 +22,16 @@ export const LEVELS = {
 		bar: 'bg-orange-500',
 		chip: 'bg-orange-500 text-white',
 		border: 'border-orange-500',
-		text: 'text-orange-700',
+		text: 'text-orange-700 dark:text-orange-400',
 		fill: '#f97316',
 	},
 	yellow: {
 		priority: 1,
 		label: 'Amarelo',
 		bar: 'bg-yellow-400',
-		chip: 'bg-yellow-400 text-gray-900',
+		chip: 'bg-yellow-400 text-slate-900', // fixed ink: gray-* flips in dark mode
 		border: 'border-yellow-400',
-		text: 'text-yellow-700',
+		text: 'text-yellow-700 dark:text-yellow-400',
 		fill: '#facc15',
 	},
 	green: {

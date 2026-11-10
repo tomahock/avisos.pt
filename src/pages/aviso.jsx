@@ -36,7 +36,7 @@ function WarningHero({ warning, now }) {
 	const area = IPMA_AREAS[warning.idAreaAviso]
 
 	return (
-		<article className="mt-4 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+		<article className="mt-4 bg-surface border border-gray-200 rounded-xl shadow-sm overflow-hidden">
 			<div className={`h-2 ${level.bar}`} aria-hidden />
 			<div className="p-5 md:p-7">
 				<div className="flex items-start gap-4">

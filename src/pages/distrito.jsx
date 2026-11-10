@@ -76,7 +76,7 @@ function District({ code }) {
 							Avisos meteorológicos para {area.name}
 						</h1>
 						<div className="mt-2 flex flex-wrap items-center gap-3">
-							<span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide ${worst ? level.chip : 'bg-green-100 text-green-800'}`}>
+							<span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide ${worst ? level.chip : 'bg-green-100 dark:bg-green-950/60 text-green-800 dark:text-green-300'}`}>
 								{worst ? `Aviso ${level.label}` : 'Sem avisos'}
 							</span>
 							<span className="text-sm text-gray-500">
@@ -109,8 +109,8 @@ function District({ code }) {
 					</>
 				) : (
 					<div className="mt-8 border border-gray-200 rounded-xl p-8 text-center">
-						<div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100">
-							<i className="fas fa-check text-xl text-green-600" aria-hidden />
+						<div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-950/60">
+							<i className="fas fa-check text-xl text-green-600 dark:text-green-400" aria-hidden />
 						</div>
 						<p className="mt-3 font-semibold text-gray-900">Sem avisos meteorológicos para {area.name}</p>
 						<p className="mt-1 text-sm text-gray-500">O IPMA não tem avisos em vigor nem previstos para esta região.</p>

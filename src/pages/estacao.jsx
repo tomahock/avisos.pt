@@ -55,7 +55,7 @@ function hourlyXLabel(hours) {
 
 function Tile({ label, value, sub, hero = false }) {
 	return (
-		<div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+		<div className="rounded-xl border border-gray-200 bg-surface px-4 py-3">
 			<p className="text-xs text-gray-500">{label}</p>
 			<p className={`mt-0.5 font-semibold text-gray-900 tabular-nums ${hero ? 'text-4xl' : 'text-2xl'}`}>
 				{value ?? <span className="text-gray-300">—</span>}
@@ -164,7 +164,7 @@ function HourlySection({ id }) {
 								aria-selected={hours === r.hours}
 								onClick={() => setHours(r.hours)}
 								className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
-									hours === r.hours ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+									hours === r.hours ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
 								}`}
 							>
 								{r.label}
@@ -365,7 +365,7 @@ export default function EstacaoPage() {
 				{worst && (
 					<Link
 						to={districtPath(station.area)}
-						className="mt-5 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 no-underline hover:bg-gray-50"
+						className="mt-5 flex items-center gap-3 rounded-xl border border-gray-200 bg-surface px-4 py-3 no-underline hover:bg-gray-50"
 					>
 						<span className={`shrink-0 w-2 self-stretch rounded-full ${levelMeta(worst).bar}`} aria-hidden />
 						<span className="min-w-0 text-sm text-gray-800">

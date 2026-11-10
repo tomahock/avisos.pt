@@ -11,9 +11,9 @@ import { rainTotal } from '../../utils/stationMetrics.js'
 //   range — daily min→max floating bars
 // `hoverIdx`/`onHover` are lifted so sibling charts share one crosshair.
 
-const COLOR = '#4f46e5' // primary-600
-const GRID = '#e2e8f0' // gray-200
-const INK = '#64748b' // gray-500
+const COLOR = 'var(--chart-line)' // themed in index.css (indigo-600 light, indigo-400 dark)
+const GRID = 'var(--chart-grid)'
+const INK = 'var(--chart-ink)'
 const PAD = { top: 10, right: 12, bottom: 22, left: 40 }
 const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500]
 
@@ -178,45 +178,45 @@ export default function StationChart({
 				>
 					{ticks.map((t) => (
 						<g key={t}>
-							<line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke={GRID} strokeWidth="1" />
-							<text x={PAD.left - 6} y={y(t)} dy="0.32em" textAnchor="end" fontSize="11" fill={INK} className="tabular-nums">
+							<line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} style={{ stroke: GRID }} strokeWidth="1" />
+							<text x={PAD.left - 6} y={y(t)} dy="0.32em" textAnchor="end" fontSize="11" style={{ fill: INK }} className="tabular-nums">
 								{t.toLocaleString('pt-PT')}
 							</text>
 						</g>
 					))}
 					{xTicks.map(({ i, label }) => (
-						<text key={i} x={x(i)} y={height - 6} textAnchor="middle" fontSize="11" fill={INK}>
+						<text key={i} x={x(i)} y={height - 6} textAnchor="middle" fontSize="11" style={{ fill: INK }}>
 							{label}
 						</text>
 					))}
 
-					{kind === 'line' && <path d={path} fill="none" stroke={COLOR} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />}
+					{kind === 'line' && <path d={path} fill="none" style={{ stroke: COLOR }} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />}
 					{kind === 'bar' &&
 						points.map((p, i) =>
 							p.v > 0 ? (
-								<path key={i} d={barPath(x(i) - barW / 2, y(p.v), barW, y(0) - y(p.v), 4, false)} fill={COLOR} opacity={hoverIdx === i ? 0.75 : 1} />
+								<path key={i} d={barPath(x(i) - barW / 2, y(p.v), barW, y(0) - y(p.v), 4, false)} style={{ fill: COLOR }} opacity={hoverIdx === i ? 0.75 : 1} />
 							) : null
 						)}
 					{kind === 'range' &&
 						points.map((p, i) =>
 							p.lo != null && p.hi != null ? (
-								<path key={i} d={barPath(x(i) - barW / 2, y(p.hi), barW, Math.max(2, y(p.lo) - y(p.hi)), 4, true)} fill={COLOR} opacity={hoverIdx === i ? 0.75 : 1} />
+								<path key={i} d={barPath(x(i) - barW / 2, y(p.hi), barW, Math.max(2, y(p.lo) - y(p.hi)), 4, true)} style={{ fill: COLOR }} opacity={hoverIdx === i ? 0.75 : 1} />
 							) : null
 						)}
 
 					{hovered && (
 						<g pointerEvents="none">
-							<line x1={x(hoverIdx)} x2={x(hoverIdx)} y1={PAD.top} y2={PAD.top + plotH} stroke={INK} strokeWidth="1" />
+							<line x1={x(hoverIdx)} x2={x(hoverIdx)} y1={PAD.top} y2={PAD.top + plotH} style={{ stroke: INK }} strokeWidth="1" />
 							{kind === 'line' && hovered.v != null && (
-								<circle cx={x(hoverIdx)} cy={y(hovered.v)} r="4.5" fill={COLOR} stroke="#fff" strokeWidth="2" />
+								<circle cx={x(hoverIdx)} cy={y(hovered.v)} r="4.5" style={{ fill: COLOR }} data-ring strokeWidth="2" />
 							)}
 						</g>
 					)}
 					{kind === 'line' && last && hoverIdx == null && (
-						<circle cx={x(points.lastIndexOf(last))} cy={y(last.v)} r="4" fill={COLOR} stroke="#fff" strokeWidth="2" />
+						<circle cx={x(points.lastIndexOf(last))} cy={y(last.v)} r="4" style={{ fill: COLOR }} data-ring strokeWidth="2" />
 					)}
 					{!hasData && (
-						<text x={PAD.left + plotW / 2} y={PAD.top + plotH / 2} textAnchor="middle" fontSize="12" fill={INK}>
+						<text x={PAD.left + plotW / 2} y={PAD.top + plotH / 2} textAnchor="middle" fontSize="12" style={{ fill: INK }}>
 							Sem dados
 						</text>
 					)}
@@ -225,7 +225,7 @@ export default function StationChart({
 				{hovered && (
 					<div
 						ref={tipRef}
-						className="pointer-events-none absolute top-0 rounded-md bg-white/95 border border-gray-200 shadow-sm px-2 py-1 text-xs"
+						className="pointer-events-none absolute top-0 rounded-md bg-surface/95 border border-gray-200 shadow-sm px-2 py-1 text-xs"
 						style={{
 							left: Math.min(Math.max(x(hoverIdx) - tipW / 2, 0), Math.max(0, width - tipW)),
 							maxWidth: width,

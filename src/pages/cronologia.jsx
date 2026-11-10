@@ -55,8 +55,8 @@ function AreaPicker({ selected, onSelect, warningsByArea }) {
 				onClick={() => onSelect(null)}
 				className={`${base} ${
 					selected === null
-						? 'bg-gray-900 text-white border-gray-900'
-						: 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+						? 'bg-gray-900 text-gray-50 border-gray-900'
+						: 'bg-surface text-gray-700 border-gray-200 hover:bg-gray-50'
 				}`}
 			>
 				<i className="fas fa-table-cells mr-1.5" aria-hidden />
@@ -303,8 +303,8 @@ export default function CronologiaPage() {
 
 					{selected && areaWarnings.length === 0 ? (
 						<div className="border border-gray-200 rounded-xl p-8 text-center">
-							<div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100">
-								<i className="fas fa-check text-xl text-green-600" aria-hidden />
+							<div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-950/60">
+								<i className="fas fa-check text-xl text-green-600 dark:text-green-400" aria-hidden />
 							</div>
 							<p className="mt-3 font-semibold text-gray-900">
 								Sem avisos para {areaName(selected)}

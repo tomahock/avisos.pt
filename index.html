@@ -5,6 +5,18 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 	<meta name="theme-color" content="#dc2626" />
+	<meta name="color-scheme" content="light dark" />
+	<script>
+		// Theme before first paint (no white flash). Kept in sync by
+		// src/components/layout/ThemeToggle.jsx.
+		;(function () {
+			try {
+				var t = localStorage.getItem('theme')
+				var dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+				if (dark) document.documentElement.classList.add('dark')
+			} catch (e) {}
+		})()
+	</script>
 
 	<title>Avisos.pt — Avisos meteorológicos em vigor em Portugal</title>
 	<meta name="description" content="Consulta em tempo real os avisos meteorológicos amarelos, laranja e vermelhos emitidos pelo IPMA para todos os distritos de Portugal continental, com leituras actuais de temperatura, vento, precipitação e humidade." />

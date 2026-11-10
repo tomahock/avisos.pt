@@ -148,7 +148,15 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 ## Style
 
 - **Tabs**, **no semicolons** — matches `.editorconfig` + `.prettierrc`. Match this style when editing.
-- Tailwind color aliases: `primary` (indigo), `secondary` (rose), `tertiary` (teal), `gray` (slate). All defaults preserved (red/orange/yellow/green available — verified in build).
+- Tailwind color aliases: `primary` (indigo), `secondary` (rose), `tertiary` (teal), `gray` (slate), `surface` (card background). All defaults preserved (red/orange/yellow/green available — verified in build).
+- **Dark mode** (`darkMode: 'class'`, `.dark` on `<html>`): `gray`, `primary`, `secondary` and `surface` are **CSS variables** (`src/index.css`) whose values swap under `.dark` — so most components need no `dark:` classes. Consequences:
+  - Use `bg-surface` for cards/panels, never `bg-white`.
+  - Text on a `bg-gray-900` pill/button is `text-gray-50` (both flip together), not `text-white`.
+  - Ink that must NOT flip (e.g. on the yellow level chip) uses the untouched Tailwind `slate-*`, not `gray-*`.
+  - Other hues (green/red/amber tints) need explicit `dark:` variants.
+  - SVG charts read `var(--chart-line|grid|ink)` via `style` (presentation attributes don't take `var()`); marker rings use `[data-ring]`.
+  - Leaflet: tile pane is inverted/hue-rotated, popups/controls themed in `index.css`; divIcon HTML uses `rgb(var(--surface))`.
+  - Theme choice (`system`/`light`/`dark`) in `localStorage.theme`, applied pre-paint by the inline script in `index.html`, toggled by `components/layout/ThemeToggle.jsx`.
 - Tailwind classes built from lookup objects **must be full literal strings** (see `LEVELS[…].bar`) — never string-concatenate class names.
 - Colors for Leaflet come from `LEVELS[…].fill` (hex), NOT the `bar` Tailwind class.
 - CSS is a single `src/index.css` imported from `src/main.jsx`. Leaflet CSS is imported directly by `WarningsMap.jsx` so it ships only in the map bundle.

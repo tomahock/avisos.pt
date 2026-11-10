@@ -11,7 +11,7 @@ export default function WarningCard({ warning }) {
 	const type = warningTypeMeta(warning.awarenessTypeName)
 
 	return (
-		<article className="flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+		<article className="flex flex-col bg-surface border border-gray-200 rounded-lg shadow-sm overflow-hidden">
 			<div className={`h-2 ${level.bar}`} aria-hidden />
 			<div className="flex items-start gap-3 p-4">
 				<div className={`shrink-0 w-11 h-11 rounded-md flex items-center justify-center ${level.chip}`}>
