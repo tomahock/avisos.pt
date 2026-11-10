@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import Sparkline from './Sparkline.jsx'
+import { useMediaQuery } from '../../hooks/useMediaQuery.js'
 import { levelMeta } from '../../data/levels.js'
 import { fetchJson } from '../../utils/fetchJson.js'
 import { STATION_METRICS, defaultStationMetric, rainTotal } from '../../utils/stationMetrics.js'
@@ -47,6 +48,7 @@ export default function DistrictStations({ code, name, catalog, obs, warnings, n
 		[warnings, minute]
 	)
 	const [picked, setPicked] = useState(null)
+	const narrow = useMediaQuery('(max-width: 639px)')
 	const metric = picked ?? auto.metric
 	const meta = STATION_METRICS[metric]
 
@@ -142,12 +144,13 @@ export default function DistrictStations({ code, name, catalog, obs, warnings, n
 							<Sparkline
 								values={trendOf(r.id)}
 								kind={meta.kind}
+								width={narrow ? 64 : 96}
 								label={`${meta.label} nas últimas 24 horas em ${r.name}`}
 							/>
-							<span className="min-w-[5rem] shrink-0 text-right">
+							<span className="w-[5.75rem] shrink-0 text-right">
 								<span className="block text-lg font-semibold leading-tight text-gray-900 tabular-nums">{bigValue(r) ?? '—'}</span>
 								{[extremes(r.id), rainNote(r.id)].some(Boolean) && (
-									<span className="block text-[11px] leading-tight text-gray-500 tabular-nums whitespace-nowrap">
+									<span className="block text-[11px] leading-tight text-gray-500 tabular-nums">
 										{[extremes(r.id), rainNote(r.id)].filter(Boolean).join(' · ')}
 									</span>
 								)}

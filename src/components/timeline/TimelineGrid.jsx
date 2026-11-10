@@ -173,7 +173,7 @@ export default function TimelineGrid({ hours, rows, now, mode = 'level' }) {
 
 			<div className="flex">
 				{/* Fixed label column */}
-				<div className="shrink-0 w-32 sm:w-44 border-r border-gray-100 bg-white z-10">
+				<div className="shrink-0 w-28 sm:w-44 border-r border-gray-100 bg-white z-10">
 					<div className="h-9" />
 					<div className="h-6 border-b border-gray-100" />
 					{rows.map((row) =>

@@ -144,14 +144,14 @@ export default function StationChart({
 	const captionRight = [latestText, statsText].filter(Boolean).join(' · ')
 
 	return (
-		<figure className="m-0">
-			<figcaption className="flex items-baseline justify-between gap-2 text-sm">
+		<figure className="m-0 min-w-0">
+			<figcaption className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
 				<span className="font-semibold text-gray-900">{title}</span>
 				{captionRight && (
 					<span className={`text-gray-500 tabular-nums text-right transition-opacity ${hoverIdx == null ? '' : 'opacity-0'}`}>{captionRight}</span>
 				)}
 			</figcaption>
-			<div ref={ref} className="relative mt-1 select-none">
+			<div ref={ref} className="relative mt-1 w-full min-w-0 overflow-hidden select-none">
 				<svg
 					width={width}
 					height={height}
