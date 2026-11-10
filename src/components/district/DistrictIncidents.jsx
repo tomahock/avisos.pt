@@ -6,6 +6,8 @@ import { relativeMinutes } from '../../utils/format.js'
 import { districtIncidents, incidentKind, incidentUrl } from '../../utils/incidents.js'
 
 const REFRESH_MS = 2 * 60 * 1000
+// Past this age a snapshot is too old to show as "em curso" at all.
+const MAX_STALE_MS = 15 * 60 * 1000
 const COLLAPSED = 8
 
 // ANEPC status colours come as hex without '#'; pick readable text for them.
@@ -36,6 +38,9 @@ function Means({ i }) {
 export default function DistrictIncidents({ code }) {
 	const [all, setAll] = useState(null)
 	const [failed, setFailed] = useState(false)
+	const [loadedAt, setLoadedAt] = useState(null)
+	// Re-render on a clock so a snapshot that stopped refreshing ages out.
+	const [, setTick] = useState(0)
 	const [expanded, setExpanded] = useState(false)
 	const continental = IPMA_AREAS[code]?.region === 'continental'
 
@@ -48,6 +53,7 @@ export default function DistrictIncidents({ code }) {
 			fetchJson('/api/incidents/fma', ctrl.signal)
 				.then((data) => {
 					setAll(Array.isArray(data) ? data : [])
+					setLoadedAt(new Date())
 					setFailed(false)
 				})
 				.catch((err) => {
@@ -55,7 +61,10 @@ export default function DistrictIncidents({ code }) {
 				})
 		}
 		load()
-		const id = setInterval(load, REFRESH_MS)
+		const id = setInterval(() => {
+			load()
+			setTick((t) => t + 1)
+		}, REFRESH_MS)
 		return () => {
 			clearInterval(id)
 			ctrl?.abort()
@@ -79,9 +88,12 @@ export default function DistrictIncidents({ code }) {
 	}, [list])
 
 	if (!continental) return null
-	// A FogosPT outage only hides the section — warnings stay the focus.
-	if (failed && all === null) return null
-	if (all === null) return null
+	// Never loaded, or the last good snapshot is too old: hide the section
+	// (a FogosPT outage must not show stale incidents as "em curso").
+	if (all === null || !loadedAt) return null
+	const stale = failed
+	if (stale && Date.now() - loadedAt.getTime() > MAX_STALE_MS) return null
+	const loadedTime = loadedAt.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
 
 	const name = IPMA_AREAS[code].name
 	const shown = expanded ? list : list.slice(0, COLLAPSED)
@@ -93,7 +105,14 @@ export default function DistrictIncidents({ code }) {
 				<span className="text-xs text-gray-500">Proteção civil (ANEPC), em curso</span>
 			</div>
 
-			{list.length === 0 ? (
+			{stale && (
+				<p className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+					<i className="fas fa-triangle-exclamation" aria-hidden />
+					Não foi possível atualizar as ocorrências — dados das {loadedTime}.
+				</p>
+			)}
+
+			{list.length === 0 && stale ? null : list.length === 0 ? (
 				<p className="mt-3 flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
 					<i className="fas fa-check text-green-600" aria-hidden />
 					Sem ocorrências de proteção civil por fenómenos meteorológicos em curso em {name}.
@@ -101,7 +120,7 @@ export default function DistrictIncidents({ code }) {
 			) : (
 				<>
 					<p className="mt-1 text-sm text-gray-600">
-						{plural(list.length, 'ocorrência', 'ocorrências')} em curso em {name}
+						{plural(list.length, 'ocorrência', 'ocorrências')} {stale ? `em curso às ${loadedTime}` : 'em curso'} em {name}
 					</p>
 					<ul className="mt-3 flex flex-wrap gap-2 list-none m-0 p-0">
 						{kinds.map((k) => (
@@ -165,7 +184,7 @@ export default function DistrictIncidents({ code }) {
 				</>
 			)}
 			<p className="mt-2 text-xs text-gray-500">
-				Fonte: ANEPC, via <a href="https://fogos.pt" target="_blank" rel="noreferrer" className="text-gray-600">Fogos.pt</a>. Atualizado a cada 2 minutos.
+				Fonte: ANEPC, via <a href="https://fogos.pt" target="_blank" rel="noreferrer" className="text-gray-600">Fogos.pt</a>. Atualizado às {loadedTime}.
 			</p>
 		</section>
 	)
