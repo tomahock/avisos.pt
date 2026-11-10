@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 // Rendered width of an element, kept in sync with ResizeObserver — SVG charts
 // draw in real pixels so text never stretches.
-export function useWidth(initial = 600) {
+export function useWidth(initial = 320) {
 	const ref = useRef(null)
 	const [width, setWidth] = useState(initial)
 	useEffect(() => {

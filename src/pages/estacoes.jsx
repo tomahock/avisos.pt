@@ -162,8 +162,8 @@ export default function EstacoesPage() {
 					<table className="w-full text-sm tabular-nums">
 						<thead className="bg-gray-50 text-xs text-gray-500">
 							<tr>
-								<th className="sticky left-0 bg-gray-50 text-left font-semibold px-3 py-2">Estação</th>
-								<th className="text-left font-semibold px-3 py-2">Distrito / região</th>
+								<th className="sticky left-0 z-10 bg-gray-50 text-left font-semibold px-3 py-2">Estação</th>
+								<th className="hidden sm:table-cell text-left font-semibold px-3 py-2">Distrito / região</th>
 								{COLUMNS.map((c) => (
 									<th key={c.key} className="text-right font-semibold px-3 py-2" aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
 										<button type="button" onClick={() => sortBy(c.key)} className={`inline-flex items-center gap-1 ${sortKey === c.key ? 'text-gray-900' : 'hover:text-gray-900'}`}>
@@ -177,12 +177,14 @@ export default function EstacoesPage() {
 						<tbody>
 							{visible.map((r) => (
 								<tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
-									<td className="sticky left-0 bg-white px-3 py-1.5 font-medium">
-										<Link to={stationPath(r.id, r.name)} className="text-gray-900 no-underline hover:underline">
+									<td className="sticky left-0 z-10 bg-white px-3 py-1.5 font-medium max-w-[9.5rem] sm:max-w-none">
+										<Link to={stationPath(r.id, r.name)} className="block text-gray-900 no-underline hover:underline leading-tight">
 											{r.name}
 										</Link>
+										{/* District moves under the name on phones so the values fit on screen. */}
+										{r.area && <span className="sm:hidden block text-[11px] font-normal text-gray-500 leading-tight">{IPMA_AREAS[r.area]?.name}</span>}
 									</td>
-									<td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">
+									<td className="hidden sm:table-cell px-3 py-1.5 text-gray-600 whitespace-nowrap">
 										{r.area ? (
 											<Link to={districtPath(r.area)} className="text-gray-600 no-underline hover:underline">
 												{IPMA_AREAS[r.area]?.name}

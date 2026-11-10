@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef, useState } from 'react'
+
 import { useWidth } from '../../hooks/useWidth.js'
 import { rainTotal } from '../../utils/stationMetrics.js'
 
@@ -59,6 +61,10 @@ export default function StationChart({
 	onHover = () => {},
 }) {
 	const [ref, width] = useWidth()
+	// Tooltip is positioned from its real width so it never leaves the chart
+	// (a fixed 60 px clamp cut long values/timestamps at the edges).
+	const tipRef = useRef(null)
+	const [tipW, setTipW] = useState(0)
 	const n = points.length
 	const plotW = width - PAD.left - PAD.right
 	const plotH = height - PAD.top - PAD.bottom
@@ -143,15 +149,23 @@ export default function StationChart({
 	const latestText = showLatest && kind !== 'range' && last ? `agora ${format(last.v)}` : null
 	const captionRight = [latestText, statsText].filter(Boolean).join(' · ')
 
+	// Re-measure whenever the hovered point (and so the text) changes.
+	useLayoutEffect(() => {
+		setTipW(tipRef.current ? tipRef.current.offsetWidth : 0)
+	}, [hoverIdx, hoveredText, width])
+
 	return (
-		<figure className="m-0">
-			<figcaption className="flex items-baseline justify-between gap-2 text-sm">
+		<figure className="m-0 min-w-0">
+			<figcaption className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
 				<span className="font-semibold text-gray-900">{title}</span>
 				{captionRight && (
 					<span className={`text-gray-500 tabular-nums text-right transition-opacity ${hoverIdx == null ? '' : 'opacity-0'}`}>{captionRight}</span>
 				)}
 			</figcaption>
-			<div ref={ref} className="relative mt-1 select-none">
+			<div ref={ref} className="relative mt-1 w-full min-w-0 select-none">
+				{/* Clip only the SVG: it must never widen the measured container. The
+				    tooltip lives outside this wrapper so it isn't clipped. */}
+				<div className="w-full overflow-hidden">
 				<svg
 					width={width}
 					height={height}
@@ -207,10 +221,17 @@ export default function StationChart({
 						</text>
 					)}
 				</svg>
+				</div>
 				{hovered && (
 					<div
-						className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-md bg-white/95 border border-gray-200 shadow-sm px-2 py-1 text-xs whitespace-nowrap"
-						style={{ left: Math.min(Math.max(x(hoverIdx), 60), width - 60) }}
+						ref={tipRef}
+						className="pointer-events-none absolute top-0 rounded-md bg-white/95 border border-gray-200 shadow-sm px-2 py-1 text-xs"
+						style={{
+							left: Math.min(Math.max(x(hoverIdx) - tipW / 2, 0), Math.max(0, width - tipW)),
+							maxWidth: width,
+							// Hidden until measured, so it never flashes at the wrong spot.
+							visibility: tipW ? 'visible' : 'hidden',
+						}}
 					>
 						<span className="font-semibold text-gray-900 tabular-nums">{hoveredText}</span>
 						<span className="text-gray-500"> · {formatTime(hovered.t)}</span>
