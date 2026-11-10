@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import Nav from './Nav.jsx'
+import ThemeToggle from './ThemeToggle.jsx'
 import { relativeMinutes } from '../../utils/format.js'
 
 export default function Header({ updatedAt }) {
@@ -21,6 +22,7 @@ export default function Header({ updatedAt }) {
 						</span>
 					)}
 					<Nav />
+					<ThemeToggle />
 				</div>
 			</div>
 		</header>

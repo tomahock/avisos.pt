@@ -153,13 +153,13 @@ function warningIcon(items) {
 		return `<span title="${esc(`${meta.label ?? type} — ${levelMeta(level).label}`)}" style="display:flex;align-items:center;justify-content:center;width:${ICON_PX}px;height:${ICON_PX}px;border-radius:6px;background:${LEVELS[level]?.fill ?? '#94a3b8'};color:${ICON_INK[level] ?? '#fff'};font-size:${meta.emoji ? 13 : 11}px">${meta.emoji ? `<span style="line-height:1">${meta.emoji}</span>` : `<i class="fas ${meta.icon}"></i>`}</span>`
 	})
 	if (extra > 0) {
-		cells.push(`<span style="display:flex;align-items:center;justify-content:center;height:${ICON_PX}px;padding:0 4px;font-size:11px;font-weight:700;color:#334155">+${extra}</span>`)
+		cells.push(`<span style="display:flex;align-items:center;justify-content:center;height:${ICON_PX}px;padding:0 4px;font-size:11px;font-weight:700;color:rgb(var(--gray-700))">+${extra}</span>`)
 	}
 	const width = shown.length * ICON_PX + (shown.length - 1) * ICON_GAP + (extra > 0 ? 24 : 0) + 6
 	const height = ICON_PX + 6
 	return L.divIcon({
 		className: '',
-		html: `<div style="display:flex;gap:${ICON_GAP}px;padding:3px;background:#fff;border-radius:9px;box-shadow:0 1px 4px rgba(15,23,42,.35)">${cells.join('')}</div>`,
+		html: `<div style="display:flex;gap:${ICON_GAP}px;padding:3px;background:rgb(var(--surface));border-radius:9px;box-shadow:0 1px 4px rgba(15,23,42,.35)">${cells.join('')}</div>`,
 		iconSize: [width, height],
 		iconAnchor: [width / 2, height / 2],
 	})

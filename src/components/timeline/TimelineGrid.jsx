@@ -96,7 +96,7 @@ function Inspector({ hour, isNow, rows }) {
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 border-b border-gray-100 bg-gray-50 min-h-[3.25rem]">
 			<span className="text-sm font-semibold text-gray-900 tabular-nums">
 				{isNow && (
-					<span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-gray-900 text-white text-[10px] uppercase tracking-wider align-middle">
+					<span className="inline-block mr-2 px-1.5 py-0.5 rounded bg-gray-900 text-gray-50 text-[10px] uppercase tracking-wider align-middle">
 						Agora
 					</span>
 				)}
@@ -110,7 +110,7 @@ function Inspector({ hour, isNow, rows }) {
 					return (
 						<span
 							key={row.key}
-							className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-full pl-1 pr-2.5 py-0.5"
+							className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 bg-surface border border-gray-200 rounded-full pl-1 pr-2.5 py-0.5"
 						>
 							<span className={`w-2.5 h-2.5 rounded-full ${meta.bar}`} aria-hidden />
 							{row.inspectorLabel ?? row.label}
@@ -168,12 +168,12 @@ export default function TimelineGrid({ hours, rows, now, mode = 'level' }) {
 	}
 
 	return (
-		<div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+		<div className="border border-gray-200 rounded-xl overflow-hidden bg-surface shadow-sm">
 			<Inspector hour={hours[idx]} isNow={idx === 0} rows={rows} />
 
 			<div className="flex">
 				{/* Fixed label column */}
-				<div className="shrink-0 w-28 sm:w-44 border-r border-gray-100 bg-white z-10">
+				<div className="shrink-0 w-28 sm:w-44 border-r border-gray-100 bg-surface z-10">
 					<div className="h-9" />
 					<div className="h-6 border-b border-gray-100" />
 					{rows.map((row) =>

@@ -36,7 +36,7 @@ export default function Footer() {
 						href={REPO}
 						target="_blank"
 						rel="noreferrer"
-						className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 no-underline hover:border-gray-300 hover:bg-gray-50"
+						className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-surface px-3 py-1.5 text-xs font-semibold text-gray-800 no-underline hover:border-gray-300 hover:bg-gray-50"
 					>
 						<i className="fab fa-github text-sm" aria-hidden />
 						Código aberto — contribua no GitHub

@@ -106,15 +106,15 @@ export default function DistrictIncidents({ code }) {
 			</div>
 
 			{stale && (
-				<p className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+				<p className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-2 text-xs text-amber-800 dark:text-amber-200">
 					<i className="fas fa-triangle-exclamation" aria-hidden />
 					Não foi possível atualizar as ocorrências — dados das {loadedTime}.
 				</p>
 			)}
 
 			{list.length === 0 && stale ? null : list.length === 0 ? (
-				<p className="mt-3 flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
-					<i className="fas fa-check text-green-600" aria-hidden />
+				<p className="mt-3 flex items-center gap-2 rounded-lg border border-gray-200 bg-surface px-4 py-3 text-sm text-gray-600">
+					<i className="fas fa-check text-green-600 dark:text-green-400" aria-hidden />
 					Sem ocorrências de proteção civil por fenómenos meteorológicos em curso em {name}.
 				</p>
 			) : (
@@ -124,7 +124,7 @@ export default function DistrictIncidents({ code }) {
 					</p>
 					<ul className="mt-3 flex flex-wrap gap-2 list-none m-0 p-0">
 						{kinds.map((k) => (
-							<li key={k.label} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700">
+							<li key={k.label} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-surface px-3 py-1 text-xs font-medium text-gray-700">
 								<i className={`fas ${k.icon} text-gray-500`} aria-hidden />
 								{k.label}
 								<span className="font-bold text-gray-900 tabular-nums">{k.n}</span>
@@ -132,7 +132,7 @@ export default function DistrictIncidents({ code }) {
 						))}
 					</ul>
 
-					<ul className="mt-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white list-none m-0 p-0">
+					<ul className="mt-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface list-none m-0 p-0">
 						{shown.map((i) => {
 							const kind = incidentKind(i.natureza)
 							const where = [i.concelho, i.freguesia, i.localidade].filter(Boolean)

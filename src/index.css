@@ -1,3 +1,128 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+	/* Theme tokens (RGB triplets for Tailwind alpha). Dark values under .dark. */
+	--surface: 255 255 255;
+	--gray-50: 248 250 252;
+	--gray-100: 241 245 249;
+	--gray-200: 226 232 240;
+	--gray-300: 203 213 225;
+	--gray-400: 148 163 184;
+	--gray-500: 100 116 139;
+	--gray-600: 71 85 105;
+	--gray-700: 51 65 85;
+	--gray-800: 30 41 59;
+	--gray-900: 15 23 42;
+	--gray-950: 2 6 23;
+	--primary-50: 238 242 255;
+	--primary-100: 224 231 255;
+	--primary-200: 199 210 254;
+	--primary-300: 165 180 252;
+	--primary-400: 129 140 248;
+	--primary-500: 99 102 241;
+	--primary-600: 79 70 229;
+	--primary-700: 67 56 202;
+	--primary-800: 55 48 163;
+	--primary-900: 49 46 129;
+	--primary-950: 30 27 75;
+	--secondary-50: 255 241 242;
+	--secondary-100: 255 228 230;
+	--secondary-200: 254 205 211;
+	--secondary-300: 253 164 175;
+	--secondary-400: 251 113 133;
+	--secondary-500: 244 63 94;
+	--secondary-600: 225 29 72;
+	--secondary-700: 190 18 60;
+	--secondary-800: 159 18 57;
+	--secondary-900: 136 19 55;
+	--secondary-950: 76 5 25;
+	--chart-line: #4f46e5;
+	--chart-grid: #e2e8f0;
+	--chart-ink: #64748b;
+	color-scheme: light;
+}
+
+.dark {
+	--surface: 19 28 46;
+	--gray-50: 11 18 32;
+	--gray-100: 15 23 42;
+	--gray-200: 38 52 73;
+	--gray-300: 51 65 85;
+	--gray-400: 124 138 160;
+	--gray-500: 148 163 184;
+	--gray-600: 203 213 225;
+	--gray-700: 226 232 240;
+	--gray-800: 241 245 249;
+	--gray-900: 248 250 252;
+	--gray-950: 255 255 255;
+	--primary-50: 30 27 75;
+	--primary-100: 49 46 129;
+	--primary-200: 55 48 163;
+	--primary-300: 67 56 202;
+	--primary-400: 79 70 229;
+	--primary-500: 129 140 248;
+	--primary-600: 129 140 248;
+	--primary-700: 165 180 252;
+	--primary-800: 199 210 254;
+	--primary-900: 224 231 255;
+	--primary-950: 238 242 255;
+	--secondary-50: 76 5 25;
+	--secondary-100: 136 19 55;
+	--secondary-200: 159 18 57;
+	--secondary-300: 190 18 60;
+	--secondary-400: 225 29 72;
+	--secondary-500: 244 63 94;
+	--secondary-600: 251 113 133;
+	--secondary-700: 253 164 175;
+	--secondary-800: 254 205 211;
+	--secondary-900: 255 228 230;
+	--secondary-950: 255 241 242;
+	--chart-line: #818cf8;
+	--chart-grid: #263449;
+	--chart-ink: #94a3b8;
+	color-scheme: dark;
+}
+@layer base {
+	body {
+		@apply bg-gray-100 text-gray-900;
+	}
+}
+
+/* --- Leaflet in dark mode -------------------------------------------------
+   OSM has no dark tiles; invert + rotate hue so land/sea keep their meaning,
+   then soften. Only the tile pane: polygons and markers keep real colours. */
+.dark .leaflet-tile-pane {
+	filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6);
+}
+.dark .leaflet-container {
+	background: rgb(var(--gray-100));
+}
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip,
+.dark .leaflet-bar a,
+.dark .leaflet-control-layers,
+.dark .leaflet-control-attribution {
+	background: rgb(var(--surface));
+	color: rgb(var(--gray-800));
+}
+.dark .leaflet-bar a {
+	border-bottom-color: rgb(var(--gray-200));
+}
+.dark .leaflet-bar a:hover {
+	background: rgb(var(--gray-200));
+}
+.dark .leaflet-control-attribution a,
+.dark .leaflet-popup-content a {
+	color: rgb(var(--primary-700));
+}
+.dark .leaflet-control-layers-toggle {
+	filter: invert(1);
+}
+
+/* White rings around chart markers follow the card surface (see marks spec:
+   2px surface ring), so they disappear into the card in both themes. */
+[data-ring] {
+	stroke: rgb(var(--surface));
+}

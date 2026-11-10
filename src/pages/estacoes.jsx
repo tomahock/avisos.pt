@@ -38,7 +38,7 @@ function Highlight({ label, row, field, fmt }) {
 	return (
 		<Link
 			to={stationPath(row.id, row.name)}
-			className="block rounded-xl border border-gray-200 bg-white px-4 py-3 no-underline hover:border-gray-300 hover:bg-gray-50"
+			className="block rounded-xl border border-gray-200 bg-surface px-4 py-3 no-underline hover:border-gray-300 hover:bg-gray-50"
 		>
 			<p className="text-xs text-gray-500">{label}</p>
 			<p className="mt-0.5 text-2xl font-semibold text-gray-900 tabular-nums">{fmt(reading(row.obs, field))}</p>
@@ -117,7 +117,7 @@ export default function EstacoesPage() {
 	const withObs = inRegion.filter((r) => r.obs)
 	const when = obsDate(obsHour)
 	const regionChip = (key) =>
-		`px-3 py-1 rounded-md text-xs font-semibold transition ${region === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`
+		`px-3 py-1 rounded-md text-xs font-semibold transition ${region === key ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`
 
 	return (
 		<Layout updatedAt={updatedAt ?? (warnings ? new Date() : null)}>
@@ -153,7 +153,7 @@ export default function EstacoesPage() {
 							value={q}
 							onChange={(e) => update({ q: e.target.value })}
 							placeholder="Procurar estação ou distrito"
-							className="w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+							className="w-full rounded-lg border border-gray-200 bg-surface pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
 						/>
 					</label>
 				</div>
@@ -177,7 +177,7 @@ export default function EstacoesPage() {
 						<tbody>
 							{visible.map((r) => (
 								<tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
-									<td className="sticky left-0 z-10 bg-white px-3 py-1.5 font-medium max-w-[9.5rem] sm:max-w-none">
+									<td className="sticky left-0 z-10 bg-surface px-3 py-1.5 font-medium max-w-[9.5rem] sm:max-w-none">
 										<Link to={stationPath(r.id, r.name)} className="block text-gray-900 no-underline hover:underline leading-tight">
 											{r.name}
 										</Link>

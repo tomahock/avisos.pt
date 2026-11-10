@@ -26,7 +26,7 @@ function LevelMeaning() {
 				{LEVEL_IDS.map((id) => (
 					<article
 						key={id}
-						className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
+						className="bg-surface border border-gray-200 rounded-lg shadow-sm overflow-hidden"
 					>
 						<div className={`px-4 py-2 text-sm font-bold uppercase tracking-wide ${LEVELS[id].chip}`}>
 							{LEVELS[id].label}
@@ -64,7 +64,7 @@ function RegionTabs({ selected, onSelect }) {
 						aria-selected={active}
 						onClick={() => onSelect(r.key)}
 						className={`shrink-0 px-4 py-1.5 rounded-md text-sm font-semibold transition ${
-							active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+							active ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
 						}`}
 					>
 						{r.short}
@@ -129,9 +129,9 @@ function LevelTexts({ texts }) {
 function TypeCard({ item }) {
 	const meta = warningTypeMeta(item.type)
 	return (
-		<article className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 flex flex-col gap-3">
+		<article className="bg-surface border border-gray-200 rounded-lg shadow-sm p-4 flex flex-col gap-3">
 			<header className="flex items-start gap-3">
-				<div className="shrink-0 w-10 h-10 rounded-lg bg-gray-900 text-white flex items-center justify-center">
+				<div className="shrink-0 w-10 h-10 rounded-lg bg-gray-900 text-gray-50 flex items-center justify-center">
 					<TypeIcon type={item.type} />
 				</div>
 				<div className="min-w-0">
@@ -175,7 +175,7 @@ function TemperatureTable({ region }) {
 	const head = (id) => `${cell} text-[10px] font-semibold uppercase tracking-wider ${LEVELS[id].chip}`
 
 	return (
-		<section className="mt-6 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+		<section className="mt-6 bg-surface border border-gray-200 rounded-lg shadow-sm overflow-hidden">
 			<header className="p-4 pb-3">
 				<h3 className="font-bold text-gray-900">Tempo Frio e Tempo Quente por {region.areaLabel.toLowerCase()}</h3>
 				<p className="text-xs text-gray-500 mt-0.5">
@@ -191,11 +191,11 @@ function TemperatureTable({ region }) {
 								{region.areaLabel}
 							</th>
 							<th className="font-semibold px-2 py-2 border-l border-gray-100" colSpan={3}>
-								<i className={`fas ${cold.icon} mr-1.5 text-sky-600`} aria-hidden />
+								<i className={`fas ${cold.icon} mr-1.5 text-sky-600 dark:text-sky-400`} aria-hidden />
 								Tempo Frio · mínima
 							</th>
 							<th className="font-semibold px-2 py-2 border-l border-gray-100" colSpan={3}>
-								<i className={`fas ${heat.icon} mr-1.5 text-red-600`} aria-hidden />
+								<i className={`fas ${heat.icon} mr-1.5 text-red-600 dark:text-red-400`} aria-hidden />
 								Tempo Quente · máxima
 							</th>
 						</tr>

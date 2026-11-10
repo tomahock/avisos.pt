@@ -45,13 +45,13 @@ export default function ShareButtons({ path, text, compact = false }) {
 	}
 
 	const base = 'inline-flex items-center justify-center gap-1.5 rounded-md border transition text-xs font-semibold no-underline'
-	const btn = `${base} border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300`
+	const btn = `${base} border-gray-200 bg-surface text-gray-700 hover:bg-gray-50 hover:border-gray-300`
 	const size = compact ? 'h-8 w-8' : 'h-9 px-3'
 
 	return (
 		<div className="flex flex-wrap items-center gap-1.5">
 			{canNativeShare && (
-				<button type="button" onClick={nativeShare} className={`${base} h-9 px-3 bg-gray-900 border-gray-900 text-white hover:bg-gray-800`}>
+				<button type="button" onClick={nativeShare} className={`${base} h-9 px-3 bg-gray-900 border-gray-900 text-gray-50 hover:bg-gray-800`}>
 					<i className="fas fa-share-nodes" aria-hidden />
 					Partilhar
 				</button>
@@ -73,7 +73,7 @@ export default function ShareButtons({ path, text, compact = false }) {
 			<button
 				type="button"
 				onClick={copy}
-				className={`${copied ? `${base} bg-white border-green-300 text-green-700` : btn} ${size}`}
+				className={`${copied ? `${base} bg-surface border-green-300 dark:border-green-700 text-green-700 dark:text-green-400` : btn} ${size}`}
 				title="Copiar link"
 				aria-label="Copiar link"
 			>
