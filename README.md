@@ -47,6 +47,7 @@ Ideias, correções e melhorias são muito bem-vindas — não é preciso progra
 ## Créditos dos dados
 
 - **Avisos meteorológicos e observações das estações**: [IPMA — Instituto Português do Mar e da Atmosfera](https://www.ipma.pt), através da [API do Fogos.pt](https://fogos.pt/pt/api) ([código](https://github.com/FogosPT/fogosapi))
+- **Ocorrências de proteção civil** (fenómenos meteorológicos adversos): [ANEPC](https://www.prociv.gov.pt), através da [API do Fogos.pt](https://fogos.pt/pt/api)
 - **Limites dos concelhos**: [FrancisPais/geojson-portugal-continental](https://github.com/FrancisPais/geojson-portugal-continental) e [FrancisPais/geojson-portugal-arquipelagos](https://github.com/FrancisPais/geojson-portugal-arquipelagos)
 - **Mapa base**: © contribuidores do [OpenStreetMap](https://www.openstreetmap.org/copyright)
 - **Ícones**: [Font Awesome Free](https://fontawesome.com) · **Tipo de letra**: Fira Sans

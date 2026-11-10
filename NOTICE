@@ -31,6 +31,9 @@ Dados apresentados no site (não fazem parte do repositório)
     Instituto Português do Mar e da Atmosfera (IPMA) — https://www.ipma.pt
     Obtidos através da API do Fogos.pt — https://fogos.pt/pt/api
     (código: https://github.com/FogosPT/fogosapi). Seguem os termos do IPMA.
+    Ocorrências de proteção civil por fenómenos meteorológicos adversos:
+    Autoridade Nacional de Emergência e Proteção Civil (ANEPC), também através
+    da API do Fogos.pt. Seguem os termos da ANEPC.
 
 public/data/pt-continental.geojson
 public/data/pt-arquipelagos.geojson
