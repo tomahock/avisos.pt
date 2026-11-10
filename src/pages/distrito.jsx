@@ -11,6 +11,7 @@ import Breadcrumb from '../components/district/Breadcrumb.jsx'
 import DistrictTimeline from '../components/district/DistrictTimeline.jsx'
 import OtherAreas from '../components/district/OtherAreas.jsx'
 import DistrictStations from '../components/stations/DistrictStations.jsx'
+import DistrictIncidents from '../components/district/DistrictIncidents.jsx'
 import { IPMA_AREAS, areaCentroid, codeFromSlug } from '../data/ipmaAreas.js'
 import { levelMeta, worstLevelId } from '../data/levels.js'
 import { useNow } from '../hooks/useNow.js'
@@ -128,6 +129,8 @@ function District({ code }) {
 						<p className="mt-1 text-sm text-gray-500">O IPMA não tem avisos em vigor nem previstos para esta região.</p>
 					</div>
 				)}
+
+				<DistrictIncidents code={code} />
 
 				<p className="mt-6 flex flex-wrap gap-x-4 gap-y-1 text-sm">
 					<Link to={`/cronologia?d=${code}`} className="text-primary-700">Cronologia hora a hora</Link>

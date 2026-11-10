@@ -50,6 +50,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `functions/api/warnings.js` → `/v2/warnings/ipma`, 5 min cache.
 - `functions/api/stations.js` → `/v2/weather/stations/ipma`, 1 h cache (catalog rarely changes).
 - `functions/api/observations.js` → `/v2/weather/observations`, 10 min cache. **Trims to the latest hour server-side** — upstream returns 24 h × ~190 stations (~1 MB); we return `{ hour, stations }` for just the most recent hour.
+- `functions/api/incidents/fma.js` → `/v2/incidents/active?fma=1` (ANEPC incidents caused by adverse weather), 2 min cache, trimmed to the fields the district page uses (upstream embeds weather + all district warnings). Rendered by `components/district/DistrictIncidents.jsx` (continental only, refetch every 2 min); district matching and natureza → icon in `src/utils/incidents.js` (accent/case-insensitive — ANEPC writes "Viana Do Castelo").
 - `functions/api/observations/recent.js` → same upstream, keeps 24 h for `?stations=<ids>` (≤ 40) — district-page sparklines and the station-page fallback.
 - `functions/api/stations/[id]/observations.js` → FogosPT `/v2/weather/stations/{id}/observations?hours=` (1–168, 10 min) and `[id]/daily.js` → `/v2/weather/stations/{id}/daily?days=` (1–90, 1 h). **These upstream endpoints were added in FogosPT/fogosapi#92**; until it's deployed the station page falls back to the 24 h slice and hides the range picker / daily section. They return `null` (not `-99`) for missing readings; `reading()` handles both.
 
