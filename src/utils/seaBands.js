@@ -33,5 +33,5 @@ export function bandsForRegion(collection, region) {
 /** Leaflet path style of a band at a warning level. */
 export function seaBandStyle(level) {
 	const fill = LEVELS[level]?.fill ?? '#94a3b8'
-	return { fillColor: fill, fillOpacity: 0.45, color: fill, weight: 0.5, opacity: 0.6 }
+	return { fillColor: fill, fillOpacity: 0.75, color: fill, weight: 1, opacity: 0.9 }
 }
