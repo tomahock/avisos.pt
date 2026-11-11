@@ -50,15 +50,16 @@ function normalize(s) {
 		.toLowerCase()
 }
 
-function Highlight({ label, row, field, fmt }) {
+// `value(row)` → the text of the big number (default: the latest reading).
+function Highlight({ label, row, field, fmt, value, className = '' }) {
 	if (!row) return null
 	return (
 		<Link
 			to={stationPath(row.id, row.name)}
-			className="block rounded-xl border border-gray-200 bg-surface px-4 py-3 no-underline hover:border-gray-300 hover:bg-gray-50"
+			className={`block rounded-xl border border-gray-200 bg-surface px-4 py-3 no-underline hover:border-gray-300 hover:bg-gray-50 ${className}`}
 		>
 			<p className="text-xs text-gray-500">{label}</p>
-			<p className="mt-0.5 text-2xl font-semibold text-gray-900 tabular-nums">{fmt(reading(row.obs, field))}</p>
+			<p className="mt-0.5 text-2xl font-semibold text-gray-900 tabular-nums">{value ? value(row) : fmt(reading(row.obs, field))}</p>
 			<p className="text-sm text-gray-700 truncate">{row.name}</p>
 		</Link>
 	)
@@ -66,12 +67,14 @@ function Highlight({ label, row, field, fmt }) {
 
 // Ties go to the first name A→Z — the same tie-break as the sorted list, so
 // a tile and the top row of that column always name the same station.
+// `field` = an observation field, or a getter (row) => number|null.
 function extreme(rows, field, pick) {
+	const get = typeof field === 'function' ? field : (r) => reading(r.obs, field)
 	let best = null
 	for (const r of rows) {
-		const v = reading(r.obs, field)
+		const v = get(r)
 		if (v == null) continue
-		const bv = best ? reading(best.obs, field) : null
+		const bv = best ? get(best) : null
 		if (!best || pick(v, bv) || (v === bv && byName(r, best) < 0)) best = r
 	}
 	return best
@@ -121,7 +124,7 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 								<SortIcon active={sortKey === 'nome'} dir={sortDir} />
 							</button>
 						</th>
-						<th className="text-left font-semibold px-3 py-2">Distrito / região</th>
+						<th className="hidden xl:table-cell text-left font-semibold px-3 py-2">Distrito / região</th>
 						{COLUMNS.map((c) => (
 							<th key={c.key} className="text-right font-semibold px-3 py-2 whitespace-nowrap" aria-sort={ariaSort(c.key)} title={c.title}>
 								<button type="button" onClick={() => onSort(c.key)} className={`inline-flex items-center gap-1 ${sortKey === c.key ? 'text-gray-900' : 'hover:text-gray-900'}`}>
@@ -139,8 +142,14 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 								<Link to={stationPath(r.id, r.name)} className="block text-gray-900 no-underline hover:underline leading-tight">
 									{r.name}
 								</Link>
+								{/* Below 1280 px the district column is hidden; it moves under the name. */}
+								{r.area && (
+									<span data-district className="xl:hidden block text-[11px] font-normal leading-tight text-gray-500">
+										{IPMA_AREAS[r.area]?.name}
+									</span>
+								)}
 							</td>
-							<td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">
+							<td className="hidden xl:table-cell px-3 py-1.5 text-gray-600 whitespace-nowrap">
 								{r.area ? (
 									<Link to={districtPath(r.area)} className="text-gray-600 no-underline hover:underline">
 										{IPMA_AREAS[r.area]?.name}
@@ -162,13 +171,21 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 	)
 }
 
-// Phones: today's extremes under the district ("Hoje 8,0–16,0 °C · 3,2 mm").
-function TodayLine({ r }) {
+// Phones: today's extremes under the district ("Hoje 8,0–16,0 °C · 3,2 mm"),
+// without the value that is already the big number on the right (sorting by
+// Máx. → "Hoje mín. 8,0 °C · 3,2 mm"); no line when nothing is left.
+function TodayLine({ r, sortKey }) {
 	const t = r.today
-	if (!t || (t.tmax == null && t.rain == null)) return null
+	if (!t) return null
 	const parts = []
-	if (t.tmax != null) parts.push(`${t.tMissing ? '≈ ' : ''}${fmtTemp(t.tmin)}–${fmtTemp(t.tmax)}`)
-	if (t.rain != null) parts.push(`${t.rMissing ? '≥ ' : ''}${fmtMm(t.rain)}`)
+	const tb = (bound) => (t.tMissing ? `${bound} ` : '')
+	if (t.tmax != null) {
+		if (sortKey === 'tmax') parts.push(`mín. ${tb('≤')}${fmtTemp(t.tmin)}`)
+		else if (sortKey === 'tmin') parts.push(`máx. ${tb('≥')}${fmtTemp(t.tmax)}`)
+		else parts.push(`${t.tMissing ? '≈ ' : ''}${fmtTemp(t.tmin)}–${fmtTemp(t.tmax)}`)
+	}
+	if (t.rain != null && sortKey !== 'chuvaHoje') parts.push(`${t.rMissing ? '≥ ' : ''}${fmtMm(t.rain)}`)
+	if (parts.length === 0) return null
 	return (
 		<span data-today className="block text-[11px] leading-tight text-gray-500">
 			Hoje {parts.join(' · ')}
@@ -220,7 +237,7 @@ function StationList({ rows, sortKey, sortDir, sorts, onSort }) {
 							<span className="min-w-0 flex-1">
 								<span data-station-name className="block text-sm font-medium leading-tight text-gray-900">{r.name}</span>
 								<span className="block text-[11px] leading-tight text-gray-500">{IPMA_AREAS[r.area]?.name ?? '—'}</span>
-								<TodayLine r={r} />
+								<TodayLine r={r} sortKey={sortKey} />
 							</span>
 							<span className="shrink-0 text-right">
 								<span data-primary className="block text-base font-semibold leading-tight text-gray-900 whitespace-nowrap">
@@ -327,11 +344,18 @@ export default function EstacoesPage() {
 					</p>
 				</header>
 
-				<section className="mt-5 grid gap-3 grid-cols-2 lg:grid-cols-4">
+				<section className="mt-5 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
 					<Highlight label="Mais quente agora" row={extreme(withObs, 'temperatura', (a, b) => a > b)} field="temperatura" fmt={fmtTemp} />
 					<Highlight label="Mais fria agora" row={extreme(withObs, 'temperatura', (a, b) => a < b)} field="temperatura" fmt={fmtTemp} />
 					<Highlight label="Vento mais forte" row={extreme(withObs, 'intensidadeVentoKM', (a, b) => a > b)} field="intensidadeVentoKM" fmt={fmtKmh} />
 					<Highlight label="Mais chuva na última hora" row={extreme(withObs, 'precAcumulada', (a, b) => a > b)} field="precAcumulada" fmt={fmtMm} />
+					<Highlight
+						label="Mais chuva hoje"
+						// 5th tile: full width on phones instead of a lone half cell.
+						className="col-span-2 sm:col-span-1"
+						row={extreme(inRegion, (r) => r.today?.rain ?? null, (a, b) => a > b)}
+						value={(r) => `${r.today.rMissing ? '≥ ' : ''}${fmtMm(r.today.rain)}`}
+					/>
 				</section>
 
 				<div className="mt-6 flex flex-wrap items-center gap-3">
