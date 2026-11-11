@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import * as fma from '../../functions/api/incidents/fma.js'
+import * as madeiraEvent from '../../functions/api/madeira/event.js'
+import * as madeiraOccurrences from '../../functions/api/madeira/occurrences.js'
 import * as observations from '../../functions/api/observations.js'
 import * as recent from '../../functions/api/observations/recent.js'
 import * as stations from '../../functions/api/stations.js'
@@ -145,5 +147,90 @@ describe('/api/incidents/fma', () => {
 	test('odd upstream → []', async () => {
 		upstream = { data: null }
 		expect(await (await call(fma)).json()).toEqual([])
+	})
+})
+
+describe('/api/madeira/event', () => {
+	test('keeps what the area pages render, drops the breakdowns', async () => {
+		upstream = {
+			success: true,
+			data: {
+				id: 'e1',
+				title: 'Depressão Charles',
+				status: 'ATIVO',
+				active: true,
+				start: '2026-11-10T20:00:00Z',
+				updatedAt: '2026-11-11T12:15:00Z',
+				kpi: { occurrences: 265, activeOccurrences: '20', operationals: 668, groundAssets: 274, municipalities: 12, peak: { time: '2026-11-11T06:00:00Z', occurrences: 36 } },
+				recommendations: ['Evite deslocações.', '', null],
+				municipalities: [{ name: 'Funchal', occurrences: 65, natures: [{ code: '1' }] }],
+				roadRestrictions: [{ road: 'ER 101', closed: true, text: 'Cortada', time: null }, { road: 'VR 1', text: 'Condicionada' }, {}],
+				communiques: [
+					{ title: 'Aviso 17', time: '2026-11-06T11:31:00Z', text: 'Muito texto', link: 'https://www.procivmadeira.pt/x', official: true },
+					{ title: 'Ligação estranha', link: 'javascript:alert(1)' },
+					{ title: '' },
+				],
+				natures: [1],
+				hourly: [1],
+				parishes: [1],
+				entities: [1],
+				topOccurrences: [1],
+				source: 'SRPC-RAM',
+			},
+		}
+		const body = await (await call(madeiraEvent)).json()
+		expect(calledPath()).toBe('/v2/madeira/events/current')
+		const e = body.event
+		expect(e).toMatchObject({ id: 'e1', title: 'Depressão Charles', active: true, zone: null, end: null, updatedAt: '2026-11-11T12:15:00Z' })
+		expect(e.kpi).toEqual({ occurrences: 265, activeOccurrences: 20, operationals: 668, groundAssets: 274, municipalities: 12, peak: { time: '2026-11-11T06:00:00Z', occurrences: 36 } })
+		expect(e.recommendations).toEqual(['Evite deslocações.'])
+		expect(e.municipalities).toEqual([{ name: 'Funchal', occurrences: 65 }])
+		expect(e.roadRestrictions).toEqual([
+			{ road: 'ER 101', closed: true, text: 'Cortada', time: null },
+			{ road: 'VR 1', closed: false, text: 'Condicionada', time: null },
+		])
+		expect(e.communiques).toEqual([
+			{ title: 'Aviso 17', time: '2026-11-06T11:31:00Z', link: 'https://www.procivmadeira.pt/x', official: true },
+			{ title: 'Ligação estranha', time: null, link: null, official: false },
+		])
+		for (const k of ['natures', 'hourly', 'parishes', 'entities', 'topOccurrences', 'source']) expect(e).not.toHaveProperty(k)
+	})
+	test.each([[{ success: true, data: null }], [{}], [null], [[]]])('no event / odd upstream %j → { event: null }', async (body) => {
+		upstream = body
+		expect(await (await call(madeiraEvent)).json()).toEqual({ event: null })
+	})
+	test('kpi missing → zeros, no peak', async () => {
+		upstream = { data: { id: 1, active: true } }
+		const { event } = await (await call(madeiraEvent)).json()
+		expect(event.kpi).toEqual({ occurrences: 0, activeOccurrences: 0, operationals: 0, groundAssets: 0, municipalities: 0, peak: null })
+		expect(event).toMatchObject({ id: '1', roadRestrictions: [], communiques: [], recommendations: [], municipalities: [] })
+	})
+})
+
+describe('/api/madeira/occurrences', () => {
+	test('asks for the last 24 h and keeps only the fields used', async () => {
+		upstream = {
+			success: true,
+			data: [
+				{ id: 'a', copies: 2, start: '2026-11-11T11:59:00Z', natureCode: '3311', nature: 'Queda', firefighters: 2, vehicles: 1, parishCode: '310307', parish: 'São Martinho', municipalityCode: '3103', municipality: 'Funchal', lat: 32.64, lng: -16.93, location: 'parish', entities: ['CMOS'], updatedAt: 'x' },
+				{ id: 'b', copies: 0, start: '2026-11-11T11:00:00Z', natureCode: 3313, nature: 'Movimento de massa', firefighters: null, parishCode: null, municipalityCode: null }, // before #101: no lat/lng
+				{ id: 'c', lat: 32.6, lng: null, location: null },
+				null,
+			],
+		}
+		const body = await (await call(madeiraOccurrences)).json()
+		expect(calledPath()).toBe('/v2/madeira/occurrences?limit=2000')
+		expect(body).toHaveLength(3)
+		expect(body[0]).toEqual({ id: 'a', copies: 2, start: '2026-11-11T11:59:00Z', natureCode: '3311', nature: 'Queda', firefighters: 2, vehicles: 1, parishCode: '310307', parish: 'São Martinho', municipalityCode: '3103', municipality: 'Funchal', lat: 32.64, lng: -16.93 })
+		expect(body[1]).toMatchObject({ id: 'b', copies: 1, natureCode: '3313', firefighters: 0, vehicles: 0, lat: null, lng: null, municipality: null })
+		expect(body[2]).toMatchObject({ id: 'c', lat: null, lng: null })
+	})
+	test('odd upstream → []', async () => {
+		upstream = { data: null }
+		expect(await (await call(madeiraOccurrences)).json()).toEqual([])
+	})
+	test('upstream down → 502', async () => {
+		fetchMock.mockResolvedValueOnce(new Response('x', { status: 503 }))
+		expect((await call(madeiraOccurrences)).status).toBe(502)
 	})
 })

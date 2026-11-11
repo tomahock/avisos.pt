@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Layout from '../layouts/index.jsx'
 import DistrictGroup from '../components/warnings/DistrictGroup.jsx'
 import DistrictOverview from '../components/warnings/DistrictOverview.jsx'
+import MadeiraEventBanner from '../components/warnings/MadeiraEventBanner.jsx'
 import StateEmpty from '../components/warnings/StateEmpty.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
@@ -117,6 +118,9 @@ export default function IndexPage() {
 			<Layout updatedAt={updatedAt}>
 				<PageHeading />
 				<StateEmpty />
+				<div className="px-4 mt-8 max-w-2xl mx-auto">
+					<MadeiraEventBanner />
+				</div>
 			</Layout>
 		)
 	}

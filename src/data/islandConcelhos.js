@@ -63,3 +63,18 @@ export function codeForFeature(feature, continentalResolver) {
 	}
 	return continentalResolver(props.dis_name)
 }
+
+function norm(s) {
+	return String(s ?? '')
+		.normalize('NFD')
+		.replace(/[̀-ͯ]/g, '')
+		.toLowerCase()
+		.trim()
+}
+const MADEIRA_BY_NORM = Object.fromEntries(Object.entries(MADEIRA_CONCELHOS).map(([name, code]) => [norm(name), code]))
+
+// Madeira concelho name (any case/accents, e.g. from SRPC via FogosPT) →
+// MCN / MCS / MPS, or null.
+export function madeiraAreaForConcelho(name) {
+	return MADEIRA_BY_NORM[norm(name)] ?? null
+}
