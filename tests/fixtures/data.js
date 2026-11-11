@@ -14,15 +14,35 @@ export const STATIONS = [
 	{ id: 1200576, name: 'Bragança (Aeródromo)', lng: -6.70796389, lat: 41.85763611 },
 	{ id: 1200843, name: 'Évora (Aeródromo)', lng: -7.8916, lat: 38.5296 }, // every reading -99
 	{ id: 9900001, name: 'Funchal (Teste)', lng: -16.9, lat: 32.65 },
-	{ id: 9900002, name: 'Ponta Delgada (Teste)', lng: -25.67, lat: 37.74 },
+	{ id: 9900002, name: 'Ponta Delgada (Teste)', lng: -25.67, lat: 37.74 }, // strong mean wind (Açores criterion)
+	{ id: 9900010, name: 'Lisboa, Chuva Forte (Teste)', lng: -9.16, lat: 38.76 }, // heavy rain
+	{ id: 9900011, name: 'Beja, Calor (Teste)', lng: -7.87, lat: 38.02 }, // near Tempo Quente
 ]
 export const STATION_ID = 1200535
 export const BROKEN_STATION_ID = 1200843
+// Readings near IPMA warning thresholds (src/utils/criteriaThresholds.js):
+// rain 11 mm in the latest hour (≥ yellow 10 mm/h), 7 mm/h for the 6 h
+// before (6 h sum 46 mm ≥ orange 41 mm/6h); Açores mean wind 58–68 km/h
+// (latest 68 ≥ yellow 65); Beja max ~36 °C (yellow Tempo Quente 37).
+export const RAIN_STATION_ID = 9900010
+export const WIND_STATION_ID = 9900002
+export const HOT_STATION_ID = 9900011
 
 // "2026-11-11T13:00" — FogosPT observation hour keys are UTC.
 const utcHour = (t) => new Date(Math.floor(t / HOUR) * HOUR).toISOString().slice(0, 16)
 
-function reading(id, t) {
+function reading(id, t, now) {
+	const ago = Math.round((now - t) / HOUR)
+	if (id === RAIN_STATION_ID) {
+		return { ...reading(STATION_ID, t, now), precAcumulada: ago === 0 ? 11 : ago <= 6 ? 7 : 0 }
+	}
+	if (id === WIND_STATION_ID) {
+		return { ...reading(1200541, t, now), intensidadeVentoKM: ago === 0 ? 68 : 58 + (ago % 5) * 2, intensidadeVento: 18 }
+	}
+	if (id === HOT_STATION_ID) {
+		const h = new Date(t).getUTCHours()
+		return { ...reading(1200843 + 1, t, now), temperatura: Math.round((33 + 3 * Math.sin((h / 24) * 2 * Math.PI)) * 10) / 10 }
+	}
 	if (id === BROKEN_STATION_ID) {
 		return { temperatura: -99, humidade: -99, pressao: -99, precAcumulada: -99, intensidadeVento: -99, intensidadeVentoKM: -99, idDireccVento: -99, radiacao: -99 }
 	}
@@ -80,7 +100,7 @@ export function makeFixtures(now = new Date()) {
 		for (const s of STATIONS) {
 			// Sines misses one hour — holes must not break charts.
 			if (s.id === 1200541 && i === 5) continue
-			row[s.id] = reading(s.id, ts)
+			row[s.id] = reading(s.id, ts, t)
 		}
 		observations[utcHour(ts)] = row
 	}
@@ -89,7 +109,7 @@ export function makeFixtures(now = new Date()) {
 		stationId: id,
 		observations: Array.from({ length: hours }, (_, i) => {
 			const ts = t - (hours - 1 - i) * HOUR
-			return { date: utcHour(ts), ...reading(Number(id), ts) }
+			return { date: utcHour(ts), ...reading(Number(id), ts, t) }
 		}).filter((_, i) => i % 11 !== 5), // a few missing hours
 	})
 
