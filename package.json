@@ -10,8 +10,12 @@
 		"dev:cf": "wrangler pages dev -- npm run dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"lint": "eslint src",
-		"test": "TZ=Europe/Lisbon node --test 'src/**/*.test.js'"
+		"lint": "eslint --ext .js,.jsx,.mjs --no-error-on-unmatched-pattern --max-warnings 0 src functions scripts tests e2e *.config.js",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:e2e": "playwright test",
+		"test:all": "npm run lint && npm test && npm run build && npm run test:e2e",
+		"mock:fogos": "node tests/mock-fogos/server.mjs"
 	},
 	"dependencies": {
 		"leaflet": "^1.9.4",
@@ -22,15 +26,22 @@
 		"workers-og": "^0.0.27"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.65.0",
+		"@testing-library/jest-dom": "^7.0.1",
+		"@testing-library/react": "^16.3.3",
+		"@testing-library/user-event": "^14.6.9",
 		"@vitejs/plugin-react": "^4.3.4",
+		"@vitest/coverage-v8": "^2.1.9",
 		"autoprefixer": "^10.4.20",
 		"eslint": "^8.57.1",
 		"eslint-plugin-react": "^7.37.2",
 		"eslint-plugin-react-hooks": "^5.0.0",
 		"eslint-plugin-react-refresh": "^0.4.14",
+		"jsdom": "^29.1.1",
 		"postcss": "^8.4.49",
 		"tailwindcss": "^3.4.14",
 		"vite": "^5.4.10",
+		"vitest": "^2.1.9",
 		"wrangler": "^3.86.0"
 	},
 	"browserslist": [
