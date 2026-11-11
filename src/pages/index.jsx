@@ -11,6 +11,7 @@ import { nearestStationWithObs } from '../utils/geo.js'
 import { fetchJson } from '../utils/fetchJson.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { DEFAULT_META } from '../utils/share.js'
+import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
 
 function groupByArea(warnings) {
 	const map = new Map()
@@ -25,7 +26,8 @@ function groupByArea(warnings) {
 export default function IndexPage() {
 	usePageTitle(DEFAULT_META.title, { description: DEFAULT_META.description })
 
-	const [warnings, setWarnings] = useState(null)
+	const [rawWarnings, setWarnings] = useState(null)
+	const warnings = useActiveWarnings(rawWarnings)
 	const [stations, setStations] = useState([])
 	const [obsByStation, setObsByStation] = useState({})
 	const [error, setError] = useState(null)

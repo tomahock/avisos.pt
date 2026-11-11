@@ -4,6 +4,7 @@
 // each hit FogosPT.
 
 import { fetchFogosJson } from './_fogos.js'
+import { activeWarnings } from '../src/utils/share.js'
 
 async function cached(key, ttl, load, waitUntil) {
 	const cache = caches.default
@@ -34,7 +35,7 @@ export function getWarnings(env, waitUntil) {
 			return Array.isArray(data) ? data : []
 		},
 		waitUntil
-	)
+	).then((list) => activeWarnings(list))
 }
 
 // Station catalog (GeoJSON features), 1 h — changes very rarely.

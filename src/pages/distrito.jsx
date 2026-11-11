@@ -121,6 +121,7 @@ function District({ code }) {
 
 				<p className="mt-6 flex flex-wrap gap-x-4 gap-y-1 text-sm">
 					<Link to={`/cronologia?d=${code}`} className="text-primary-700">Cronologia hora a hora</Link>
+					<Link to={`/historico?regiao=${area.slug}`} className="text-primary-700">Ver histórico</Link>
 					<Link to="/mapa" className="text-primary-700">Ver no mapa</Link>
 					<Link to="/criterios" className="text-primary-700">Critérios dos avisos</Link>
 				</p>

@@ -12,6 +12,7 @@ React 18 SPA (Vite + Tailwind 3 + react-router 6) that renders the currently act
 - `/distrito/<slug>/aviso/<tipo>-<AAAAMMDD-HHMM>` — one page per warning (shareable permalink; `noindex` because warnings expire — the page says "terminado" once FogosPT drops it)
 - `/estacoes` — every IPMA weather station with its latest reading, sortable (`?ordem=`, `?dir=`), region filter (`?regiao=`) and search (`?q=`), plus "mais quente / mais fria / vento / chuva" highlights
 - `/estacao/<id>-<nome>` — one station: current tiles, hourly charts (24 h–7 dias), daily min/max + rain (30 dias), district warning banner, nearby stations. Only the leading id is authoritative; other slugs are redirected (client) / canonicalised (server)
+- `/historico` — event log of warning changes (emitido / agravado / desagravado / prolongado / encurtado / retirado / terminado), grouped by day, newest first. Filters in the URL: `?periodo=24h|3d|7d|30d` (default 7d) or `?de=&ate=` (YYYY-MM-DD, max 31 days), `?regiao=<slug>`, `?tipo=<slugify(type)>`, `?evento=a,b`. Recorded by FogosPT since 2026-11-11 — no earlier data
 - `/criterios` — IPMA warning-emission criteria (static, no API): colour meanings, thresholds per type for Continente/Madeira/Açores (`?regiao=`), Tempo Quente/Frio per district
 - `/mapa` — Leaflet map with district polygons colored by warning level + toggleable weather station markers. Period picker (Agora / Hoje / Amanhã / next days, `?dia=<offset>`) filters what the polygons and popups show
 
@@ -28,6 +29,7 @@ npm run dev:cf   # wrangler pages dev + vite; /api/* works, reads .dev.vars
 npm run build    # outputs to ./dist
 npm run preview  # serve ./dist locally
 npm run lint
+npm test         # node --test on src/**/*.test.js (pure utils, TZ=Europe/Lisbon)
 ```
 
 `/api/*` endpoints only work under `npm run dev:cf` (or in deployed CF Pages). Plain `npm run dev` gets a 200 on `/api/warnings` returning `index.html` (SPA fallback), which then fails to parse as JSON — expected, not a bug.
@@ -50,6 +52,8 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
 - `functions/api/warnings.js` → `/v2/warnings/ipma`, 5 min cache.
 - `functions/api/stations.js` → `/v2/weather/stations/ipma`, 1 h cache (catalog rarely changes).
 - `functions/api/observations.js` → `/v2/weather/observations`, 10 min cache. **Trims to the latest hour server-side** — upstream returns 24 h × ~190 stations (~1 MB); we return `{ hour, stations }` for just the most recent hour.
+- `functions/api/warnings/history.js` → FogosPT `/v2/warnings/ipma/history` (added in FogosPT/fogosapi#98), 5 min cache, forwards only `from`/`to`/`area`/`type`/`kind`. Upstream returns `[{ id, kind, area, type, fromLevel, toLevel, startTime, endTime, previousEndTime, text, previousText, reportDate, occurredAt }]` (Lisbon wall-clock, newest `occurredAt` first; `texto_alterado` is stored upstream but never requested). URL ⇄ query and day grouping in `src/utils/history.js`; page `src/pages/historico.jsx` + `src/components/history/*` (rounds "now" to 5 min so visitors share the edge cache).
+- **Expired warnings are never shown**: `activeWarnings()` (`src/utils/share.js`) drops `endTime < now` in the `/api/warnings` proxy, in `getWarnings()` (middleware/OG) and on the client via `useActiveWarnings()` (re-checked every minute — cached responses and long-open tabs). FogosPT itself guarantees no two overlapping entries of the same area + type.
 - `functions/api/incidents/fma.js` → `/v2/incidents/active?fma=1` (ANEPC incidents caused by adverse weather), 2 min cache, trimmed to the fields the district page uses (upstream embeds weather + all district warnings). Rendered by `components/district/DistrictIncidents.jsx` (continental only, refetch every 2 min); district matching and natureza → icon in `src/utils/incidents.js` (accent/case-insensitive — ANEPC writes "Viana Do Castelo").
 - `functions/api/observations/recent.js` → same upstream, keeps 24 h for `?stations=<ids>` (≤ 40) — district-page sparklines and the station-page fallback.
 - `functions/api/stations/[id]/observations.js` → FogosPT `/v2/weather/stations/{id}/observations?hours=` (1–168, 10 min) and `[id]/daily.js` → `/v2/weather/stations/{id}/daily?days=` (1–90, 1 h). **These upstream endpoints were added in FogosPT/fogosapi#92**; until it's deployed the station page falls back to the 24 h slice and hides the range picker / daily section. They return `null` (not `-99`) for missing readings; `reading()` handles both.
@@ -82,7 +86,7 @@ Cloudflare Pages builds this repo from git. Framework preset **Vite**, build com
   - **Warning-type icons** (`WarningIconsLayer`, own toggle in the layers control): one Leaflet `divIcon` per area — a pill of FA icons, one per warning type, filled with that type's worst level (`LEVELS[…].fill`). Anchors (`map/anchors.js`): continental = bbox centre of the district's municipalities; islands = hand-picked `IPMA_AREAS[code].iconAt` (polygon maths fails there — Madeira's north/south/mountain zones don't follow concelhos, and Funchal's MultiPolygon includes the Selvagens at ~30°N). MRM has an `iconAt` too, so **MRM warnings do show on the map as an icon**. Hidden below zoom 6 (pills overlap). Follows the period picker like the polygons.
 - `src/components/map/MapLegend.jsx` — overlay legend.
 - `src/components/map/MapPeriodPicker.jsx` — period tabs for `/mapa`; each tab shows worst level + region count for its window. Periods come from `mapPeriods()` in `utils/timeline.js` ("Agora" = active this instant, then visitor-local calendar days up to the last `endTime`, max 5); filtering via `warningsInPeriod()`. Unknown/stale `?dia=` falls back to "Agora".
-- `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/`, `/cronologia`, `/mapa` and `/criterios`.
+- `src/components/layout/{Header,Footer,Nav}.jsx` — Nav has links to `/`, `/cronologia`, `/historico`, `/mapa`, `/estacoes` and `/criterios`. District pages link to `/historico?regiao=<slug>`.
 - `src/data/`:
   - `ipmaAreas.js` — `IPMA_AREAS` (25 codes total: 18 continental + AOC/ACE/AOR + MCN/MCS/MRM/MPS) each with `name`/`chip`/`lat`/`lng`/`region`. `CONTINENTAL_CODES`, `ACORES_CODES`, `MADEIRA_CODES` slice by region. `codeFromContinentalName(disName)` resolves the CAOP `dis_name` for continental only.
   - `islandConcelhos.js` — `codeForFeature(feature, continentalResolver)` — for continental features it delegates to `dis_name` lookup; for island features it uses `con_name` → island subregion (per-concelho table). `MRM` (Madeira mountain zone) crosses concelho boundaries and is deliberately not mapped to polygons — MRM warnings still surface in the list/popups but don't get a colored polygon.
@@ -142,7 +146,7 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 - `index.html` has description, canonical, Open Graph, Twitter card, `WebSite` JSON-LD, preconnect to fonts. These are the **fallback** values — `functions/_middleware.js` rewrites them per route in production (and `og:image` to a generated `/og/*.png`). Plain `npm run dev` shows the fallbacks.
 - `public/manifest.json` — installable app ("Avisos.pt", pt-PT, theme `#dc2626`). Icons in `public/imgs/`: `icon-192/512.png` (transparent, `any`), `icon-maskable-512.png` and `apple-touch-icon.png` (opaque white, logo inside the 80% safe zone) — all generated from `logo.png` with its transparent margin cropped. Regenerate them if the logo changes.
 - `public/robots.txt` — allows everything except `/api/`, points to sitemap.
-- `public/sitemap.xml` — lists `/`, `/cronologia`, `/mapa`, `/estacoes`, `/criterios`, the 25 `/distrito/<slug>` pages and the ~230 `/estacao/<slug>` pages (generated block; warning pages are ephemeral and not listed).
+- `public/sitemap.xml` — lists `/`, `/cronologia`, `/historico`, `/mapa`, `/estacoes`, `/criterios`, the 25 `/distrito/<slug>` pages and the ~230 `/estacao/<slug>` pages (generated block; warning pages are ephemeral and not listed).
 - Per-page `<title>` via `usePageTitle()` in each page component.
 
 ## Style
@@ -165,7 +169,7 @@ Stations (`/v2/weather/stations/ipma`) — GeoJSON FeatureCollection, coordinate
 ## Not yet implemented
 
 - **MRM polygon coloring**: Madeira's mountain warning zone crosses concelho boundaries; MRM warnings show as a map icon and in the list, but there's no MRM-coloured region. A concelho-independent overlay would need a different data source.
-- **Filters** (by district/type/level), **PWA/offline**, **dark mode**, **push notifications**, **history/archive**, **RSS**.
+- **Filters** (by district/type/level), **PWA/offline**, **dark mode**, **push notifications**, **RSS**. The history only covers changes since 2026-11-11 (no backfill).
 
 ## License & attribution
 

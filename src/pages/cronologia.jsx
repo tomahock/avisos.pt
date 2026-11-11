@@ -27,6 +27,7 @@ import {
 	durationHours,
 	relativeWindow,
 } from '../utils/timeline.js'
+import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
 
 const REGIONS = [
 	{ key: 'continental', title: 'Portugal Continental', codes: CONTINENTAL_CODES },
@@ -166,7 +167,8 @@ export default function CronologiaPage() {
 		{ description: PAGE_META['/cronologia'].description }
 	)
 
-	const [warnings, setWarnings] = useState(null)
+	const [rawWarnings, setWarnings] = useState(null)
+	const warnings = useActiveWarnings(rawWarnings)
 	const [error, setError] = useState(null)
 	const [updatedAt, setUpdatedAt] = useState(null)
 	const [reloadKey, setReloadKey] = useState(0)
