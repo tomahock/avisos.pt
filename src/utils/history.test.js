@@ -1,9 +1,9 @@
-import { expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 const expectDeep = (a, b) => expect(a).toEqual(b)
 const expectEq = (a, b) => expect(a).toBe(b)
 
-import { groupEventsByDay, historyQuery, lisbonIso } from './history.js'
+import { HISTORY_PERIODS, areaHistorySearch, groupEventsByDay, historyDayLabel, historyNow, historyQuery, lisbonIso } from './history.js'
 
 // 2026-11-11 12:00 Lisbon (= UTC in winter)
 const NOW = new Date('2026-11-11T12:00:00Z')
@@ -64,4 +64,23 @@ test('groupEventsByDay groups by local day, newest first', () => {
 			['2026-11-10', ['2026-11-10T14:32:00', '2026-11-10T09:00:00']],
 		]
 	)
+})
+
+describe('district page helpers', () => {
+	test('historyNow rounds down to 5 minutes', () => {
+		expect(historyNow(Date.parse('2026-11-11T14:04:59Z')).toISOString()).toBe('2026-11-11T14:00:00.000Z')
+		expect(historyNow(Date.parse('2026-11-11T14:05:00Z')).toISOString()).toBe('2026-11-11T14:05:00.000Z')
+	})
+	test('areaHistorySearch = /historico?regiao=<slug>&periodo=<id> as an API query', () => {
+		const now = new Date('2026-11-11T14:00:00Z')
+		expect(areaHistorySearch('madeira-costa-norte', '24h', now)).toBe('from=2026-11-10T14%3A00%3A00&to=2026-11-11T14%3A00%3A00&area=MCN')
+		expect(new URLSearchParams(areaHistorySearch('lisboa', undefined, now)).get('from')).toBe('2026-11-04T14:00:00')
+		expect(new URLSearchParams(areaHistorySearch('lisboa', 'lixo', now)).get('from')).toBe('2026-11-04T14:00:00') // → 7 dias
+	})
+	test('every period has a phrase for empty states', () => {
+		expect(HISTORY_PERIODS.map((p) => p.phrase)).toEqual(['nas últimas 24 horas', 'nos últimos 3 dias', 'nos últimos 7 dias', 'nos últimos 30 dias'])
+	})
+	test('historyDayLabel', () => {
+		expect(historyDayLabel('2026-11-11')).toBe('quarta-feira, 11 de novembro de 2026')
+	})
 })

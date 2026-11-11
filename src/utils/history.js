@@ -19,10 +19,10 @@ export const HISTORY_KINDS = {
 }
 
 export const HISTORY_PERIODS = [
-	{ id: '24h', hours: 24, label: '24 horas' },
-	{ id: '3d', hours: 72, label: '3 dias' },
-	{ id: '7d', hours: 168, label: '7 dias' },
-	{ id: '30d', hours: 720, label: '30 dias' },
+	{ id: '24h', hours: 24, label: '24 horas', phrase: 'nas últimas 24 horas' },
+	{ id: '3d', hours: 72, label: '3 dias', phrase: 'nos últimos 3 dias' },
+	{ id: '7d', hours: 168, label: '7 dias', phrase: 'nos últimos 7 dias' },
+	{ id: '30d', hours: 720, label: '30 dias', phrase: 'nos últimos 30 dias' },
 ]
 export const DEFAULT_PERIOD = '7d'
 
@@ -123,4 +123,25 @@ export function groupEventsByDay(events) {
 		else groups.push({ day, events: [e] })
 	}
 	return groups
+}
+
+// FogosPT started recording warning events on this date — nothing before it.
+export const HISTORY_RECORDING_SINCE = '11 de novembro de 2026'
+
+// "Now" rounded down to 5 min, so visitors in the same 5 minutes ask for the
+// same from/to and share the edge-cached response.
+const BUCKET_MS = 5 * 60 * 1000
+export function historyNow(now = Date.now()) {
+	return new Date(Math.floor(Number(now) / BUCKET_MS) * BUCKET_MS)
+}
+
+// 'YYYY-MM-DD' (visitor-local, from groupEventsByDay) → "terça-feira, 11 de novembro de 2026".
+export function historyDayLabel(day) {
+	const [y, m, d] = day.split('-').map(Number)
+	return new Date(y, m - 1, d).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+// API query string for one area's history over a period id (district pages).
+export function areaHistorySearch(slug, period = DEFAULT_PERIOD, now = historyNow()) {
+	return historyApiSearch(historyQuery(new URLSearchParams({ regiao: slug, periodo: period }), now))
 }

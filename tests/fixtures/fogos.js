@@ -11,8 +11,16 @@ export function fogosRoute(fx, url) {
 		const area = csv('area')
 		const type = csv('type')
 		const kind = csv('kind')
+		// from/to and occurredAt are Lisbon wall-clock ISO strings: compare as text.
+		const from = q.get('from')
+		const to = q.get('to')
 		const body = fx.history.filter(
-			(e) => (!area || area.includes(e.area)) && (!type || type.includes(e.type)) && (!kind || kind.includes(e.kind))
+			(e) =>
+				(!area || area.includes(e.area)) &&
+				(!type || type.includes(e.type)) &&
+				(!kind || kind.includes(e.kind)) &&
+				(!from || e.occurredAt >= from) &&
+				(!to || e.occurredAt <= to)
 		)
 		return { status: 200, body }
 	}

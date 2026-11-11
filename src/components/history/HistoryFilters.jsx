@@ -2,6 +2,7 @@ import { ACORES_CODES, CONTINENTAL_CODES, IPMA_AREAS, MADEIRA_CODES } from '../.
 import { WARNING_TYPE_NAMES, warningTypeMeta } from '../../data/warningTypes.js'
 import { DEFAULT_PERIOD, HISTORY_KINDS, HISTORY_PERIODS } from '../../utils/history.js'
 import { slugify } from '../../utils/share.js'
+import HistoryPeriodTabs from './HistoryPeriodTabs.jsx'
 
 const AREA_GROUPS = [
 	{ label: 'Continente', codes: CONTINENTAL_CODES },
@@ -29,25 +30,10 @@ export default function HistoryFilters({ searchParams, onChange }) {
 	return (
 		<div className="mt-5 flex flex-col gap-3">
 			<div className="flex flex-wrap items-center gap-2">
-				<div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit max-w-full overflow-x-auto" role="tablist" aria-label="Período">
-					{HISTORY_PERIODS.map((p) => {
-						const active = !custom && p.id === period
-						return (
-							<button
-								key={p.id}
-								type="button"
-								role="tab"
-								aria-selected={active}
-								onClick={() => onChange({ periodo: p.id === DEFAULT_PERIOD ? '' : p.id, de: '', ate: '' })}
-								className={`shrink-0 px-3 py-1.5 rounded-md text-sm font-semibold transition ${
-									active ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-								}`}
-							>
-								{p.label}
-							</button>
-						)
-					})}
-				</div>
+				<HistoryPeriodTabs
+					selected={custom ? null : period}
+					onSelect={(id) => onChange({ periodo: id === DEFAULT_PERIOD ? '' : id, de: '', ate: '' })}
+				/>
 				<label className="flex items-center gap-1.5 text-sm text-gray-600">
 					<span className="sr-only">Região</span>
 					<select

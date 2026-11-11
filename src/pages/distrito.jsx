@@ -12,6 +12,7 @@ import Breadcrumb from '../components/district/Breadcrumb.jsx'
 import DistrictTimeline from '../components/district/DistrictTimeline.jsx'
 import OtherAreas from '../components/district/OtherAreas.jsx'
 import DistrictStations from '../components/stations/DistrictStations.jsx'
+import DistrictHistory from '../components/district/DistrictHistory.jsx'
 import DistrictIncidents from '../components/district/DistrictIncidents.jsx'
 import MadeiraOccurrences from '../components/district/MadeiraOccurrences.jsx'
 import { IPMA_AREAS, areaCentroid, codeFromSlug } from '../data/ipmaAreas.js'
@@ -120,6 +121,7 @@ function District({ code }) {
 
 				<DistrictIncidents code={code} />
 				<MadeiraOccurrences code={code} />
+				<DistrictHistory code={code} />
 
 				<p className="mt-6 flex flex-wrap gap-x-4 gap-y-1 text-sm">
 					<Link to={`/cronologia?d=${code}`} className="text-primary-700">Cronologia hora a hora</Link>
