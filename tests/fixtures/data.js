@@ -60,6 +60,8 @@ export function makeFixtures(now = new Date()) {
 		w('MCS', 'Vento', 'orange', 1, 12, 'Rajadas até 100 km/h nas zonas montanhosas.'),
 		w('AOR', 'Trovoada', 'yellow', 4, 14),
 		w('MRM', 'Vento', 'yellow', -1, 8),
+		// Starts in 5 h: no sea band for Porto Santo "Agora", one on a day tab.
+		w('MPS', 'Agitação Marítima', 'orange', 5, 15, 'Ondas de noroeste com 3 a 4 metros.'),
 	]
 
 	const stations = STATIONS.map((s) => ({

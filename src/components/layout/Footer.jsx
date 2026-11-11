@@ -24,7 +24,8 @@ export default function Footer() {
 						Localização aproximada das ocorrências da Madeira pelo centroide da freguesia (CAOP,{' '}
 						<A href="https://www.dgterritorio.gov.pt">DGT</A>, via Fogos.pt).
 						Limites dos concelhos de{' '}
-						<A href="https://github.com/FrancisPais/geojson-portugal-continental">FrancisPais/geojson-portugal</A>. Mapa
+						<A href="https://github.com/FrancisPais/geojson-portugal-continental">FrancisPais/geojson-portugal</A>; costa de Espanha
+						(faixas de agitação marítima) do <A href="https://www.naturalearthdata.com">Natural Earth</A>. Mapa
 						© contribuidores do <A href="https://www.openstreetmap.org/copyright">OpenStreetMap</A>.
 					</p>
 					<p className="m-0">

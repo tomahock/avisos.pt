@@ -1,4 +1,5 @@
 import { LEVELS } from '../../data/levels.js'
+import { SEA_BAND_KM } from '../../data/seaAreas.js'
 
 const ORDER = ['red', 'orange', 'yellow']
 
@@ -21,6 +22,14 @@ export default function MapLegend() {
 					<span className="text-gray-500">Sem aviso</span>
 				</li>
 			</ul>
+			<p className="mt-2 mb-0 flex items-center gap-2 border-t border-gray-200 pt-1.5 text-gray-600">
+				<i className="fas fa-water text-gray-500" aria-hidden />
+				<span>
+					Faixa no mar ({SEA_BAND_KM} km):
+					<br />
+					agitação marítima
+				</span>
+			</p>
 		</div>
 	)
 }

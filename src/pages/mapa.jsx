@@ -12,6 +12,7 @@ import { fetchJson } from '../utils/fetchJson.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { PAGE_META } from '../utils/share.js'
 import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
+import { bandsForRegion } from '../utils/seaBands.js'
 import { occurrenceWindow, occurrencesBetween, parishGroups, srpcFresh, totalCount } from '../utils/madeira.js'
 import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
 import { useMadeiraSrpc } from '../hooks/useMadeiraSrpc.js'
@@ -66,6 +67,7 @@ export default function MapPage() {
 	const [obs, setObs] = useState({})
 	const [geoContinental, setGeoContinental] = useState(null)
 	const [geoArquipelagos, setGeoArquipelagos] = useState(null)
+	const [seaBands, setSeaBands] = useState(null)
 	const [error, setError] = useState(null)
 	const [updatedAt, setUpdatedAt] = useState(null)
 	const [reloadKey, setReloadKey] = useState(0)
@@ -101,6 +103,11 @@ export default function MapPage() {
 			.catch((err) => {
 				if (err.name !== 'AbortError') setError(err.message)
 			})
+
+		// Sea strips for Agitação Marítima — optional, never blocks the map.
+		fetchJson('/data/sea-bands.geojson', ctrl.signal)
+			.then(setSeaBands)
+			.catch(() => {})
 
 		fetchJson('/api/stations', ctrl.signal)
 			.then(setStations)
@@ -159,6 +166,14 @@ export default function MapPage() {
 		}
 	}, [geoContinental, geoArquipelagos])
 
+	const regionSea = useMemo(
+		() =>
+			seaBands
+				? { continental: bandsForRegion(seaBands, 'continental'), acores: bandsForRegion(seaBands, 'acores'), madeira: bandsForRegion(seaBands, 'madeira') }
+				: null,
+		[seaBands]
+	)
+
 	if (error) {
 		return (
 			<Layout>
@@ -200,6 +215,7 @@ export default function MapPage() {
 				<RegionCard region={continental}>
 					<WarningsMap
 						geojson={regionData.continental}
+						seaBands={regionSea?.continental}
 						warnings={periodWarnings}
 						emptyText={emptyText}
 						stations={stations}
@@ -217,6 +233,7 @@ export default function MapPage() {
 				<RegionCard region={acores}>
 					<WarningsMap
 						geojson={regionData.acores}
+						seaBands={regionSea?.acores}
 						warnings={periodWarnings}
 						emptyText={emptyText}
 						stations={stations}
@@ -230,6 +247,7 @@ export default function MapPage() {
 				<RegionCard region={madeira}>
 					<WarningsMap
 						geojson={regionData.madeira}
+						seaBands={regionSea?.madeira}
 						warnings={periodWarnings}
 						emptyText={emptyText}
 						stations={stations}
