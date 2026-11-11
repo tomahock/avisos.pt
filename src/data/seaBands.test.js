@@ -65,3 +65,37 @@ test('neighbouring continental bands meet (no gap at district boundaries)', () =
 		expect(turf.booleanIntersects(turf.buffer(a, 0.2, { units: 'kilometers' }), b), `${chain[i - 1]} – ${chain[i]}`).toBe(true)
 	}
 })
+
+// Inner waters are not "sea": the band starts at the open coast (#38).
+// The Tejo estuary is open water in the concelho polygons (the others are
+// inside concelho limits already); points sampled across the estuary.
+describe('no band inside estuaries and lagoons', () => {
+	const inLand = (pt) => concelhos.some((c) => turf.booleanPointInPolygon(pt, c))
+	const inBand = (pt) => bands.features.find((f) => turf.booleanPointInPolygon(pt, f))?.properties.code ?? null
+	const TEJO = [
+		[-9.03, 38.74], // Mar da Palha
+		[-9.1, 38.66], // Seixal
+		[-9.06, 38.7], // Barreiro
+		[-9.0, 38.8], // Alverca
+		[-9.13, 38.69], // Cacilhas, inside the mouth
+	]
+	test.each(TEJO)('Tejo %f,%f is water but has no band', (lng, lat) => {
+		const pt = turf.point([lng, lat])
+		expect(inLand(pt)).toBe(false)
+		expect(inBand(pt)).toBeNull()
+	})
+	test.each([
+		['Sado', -8.8, 38.46],
+		['Ria de Aveiro', -8.7, 40.68],
+		['Ria Formosa', -7.9, 37.0],
+		['Lagoa de Óbidos', -9.18, 39.41],
+		['Douro', -8.63, 41.14],
+		['Guadiana', -7.415, 37.19],
+	])('%s has no band', (_, lng, lat) => {
+		expect(inBand(turf.point([lng, lat]))).toBeNull()
+	})
+	test('the open coast just outside the Tejo still has its band', () => {
+		expect(inBand(turf.point([-9.26, 38.6]))).toBe('STB') // off Fonte da Telha (Costa da Caparica)
+		expect(inBand(turf.point([-9.45, 38.68]))).toBe('LSB') // off Cascais
+	})
+})
