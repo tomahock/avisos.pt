@@ -47,7 +47,7 @@ export default function HistoricoPage() {
 				if (err.name !== 'AbortError') setError(err.message)
 			})
 		return () => ctrl.abort()
-	}, [search])
+	}, [search, reloadKey])
 
 	const groups = useMemo(() => (events ? groupEventsByDay(events) : []), [events])
 
