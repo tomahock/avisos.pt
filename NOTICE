@@ -49,6 +49,13 @@ public/data/pt-arquipelagos.geojson
     https://github.com/FrancisPais/geojson-portugal-arquipelagos.
     Os repositórios de origem não declaram licença.
 
+public/data/sea-bands.geojson
+    Faixas de mar junto à costa (avisos de agitação marítima), calculadas por
+    scripts/build-sea-bands.mjs a partir dos limites dos concelhos acima e de
+    scripts/data/spain-near-pt.geojson: Espanha, recortada junto a Portugal,
+    de Natural Earth 1:10m Admin 0 – Countries (domínio público) —
+    https://www.naturalearthdata.com
+
 Mapa base
     © contribuidores do OpenStreetMap — https://www.openstreetmap.org/copyright
     (dados ODbL; mosaicos servidos pela OpenStreetMap Foundation).

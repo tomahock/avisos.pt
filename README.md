@@ -6,7 +6,7 @@ Site com os avisos meteorológicos do IPMA em vigor em Portugal — **<https://a
 - **Ocorrências de proteção civil** por tempo adverso: da ANEPC nos distritos do continente e, na Madeira, do SRPC, IP-RAM (ocorrências das últimas 24 h e o evento em curso: números, estradas cortadas, comunicados, recomendações)
 - **Cronologia** hora a hora dos avisos
 - **Histórico** das alterações aos avisos: emitidos, agravados, desagravados, prolongados, retirados e terminados (desde 11/11/2026)
-- **Mapa** com os avisos de agora e dos próximos dias, ícones por tipo, estações meteorológicas e, na Madeira, as ocorrências por freguesia
+- **Mapa** com os avisos de agora e dos próximos dias, ícones por tipo, o mar junto à costa pintado nos avisos de agitação marítima, estações meteorológicas e, na Madeira, as ocorrências por freguesia
 - **Estações meteorológicas** do IPMA: leitura atual, gráficos hora a hora e diários, rankings
 - **Critérios** de emissão de avisos do IPMA
 
@@ -36,6 +36,7 @@ npm test          # testes unitários, de componentes e das functions (Vitest)
 npm run test:e2e  # testes no browser (Playwright) — depois de npm run build
 npm run test:all  # tudo o que corre na CI
 node scripts/build-stations.mjs   # regenera estação → distrito e o sitemap das estações
+node scripts/build-sea-bands.mjs  # regenera as faixas de mar (largura em src/data/seaAreas.js)
 ```
 
 ## Deploy
@@ -55,6 +56,7 @@ Ideias, correções e melhorias são muito bem-vindas — não é preciso progra
 - **Ocorrências de proteção civil** (fenómenos meteorológicos adversos): [ANEPC](https://www.prociv.gov.pt), através da [API do Fogos.pt](https://fogos.pt/pt/api)
 - **Ocorrências e eventos de proteção civil na Madeira**: [SRPC, IP-RAM](https://www.procivmadeira.pt), através da [API do Fogos.pt](https://fogos.pt/pt/api); localização aproximada pelo centroide da freguesia (CAOP, [DGT](https://www.dgterritorio.gov.pt), calculado pelo Fogos.pt)
 - **Limites dos concelhos**: [FrancisPais/geojson-portugal-continental](https://github.com/FrancisPais/geojson-portugal-continental) e [FrancisPais/geojson-portugal-arquipelagos](https://github.com/FrancisPais/geojson-portugal-arquipelagos)
+- **Costa de Espanha** (para delimitar as faixas de agitação marítima no mapa): [Natural Earth](https://www.naturalearthdata.com) (domínio público)
 - **Mapa base**: © contribuidores do [OpenStreetMap](https://www.openstreetmap.org/copyright)
 - **Ícones**: [Font Awesome Free](https://fontawesome.com) · **Tipo de letra**: Fira Sans
 
