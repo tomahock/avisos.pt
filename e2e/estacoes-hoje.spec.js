@@ -34,3 +34,28 @@ test('phones: "Hoje" line under each station and the new sorts in the select @re
 	await noHorizontalScroll(page)
 	watch.assertClean()
 })
+
+// Follow-ups on #48: district column only from 1280 px, under the name below.
+for (const width of [1024, 1280]) {
+	test(`${width} px: the table fits without horizontal scroll; sorting works`, async ({ page, isMobile }) => {
+		test.skip(isMobile, 'table layout')
+		await page.setViewportSize({ width, height: 900 })
+		await page.goto('/estacoes')
+		const table = page.getByRole('table')
+		await expect(table.locator('tbody tr').first()).toBeVisible()
+		const overflow = await table.evaluate((t) => t.parentElement.scrollWidth - t.parentElement.clientWidth)
+		expect(overflow).toBeLessThanOrEqual(0)
+		const district = table.getByRole('columnheader', { name: 'Distrito / região' })
+		if (width < 1280) {
+			await expect(district).toBeHidden()
+			await expect(table.locator('tbody tr').first().locator('[data-district]')).toBeVisible()
+		} else {
+			await expect(district).toBeVisible()
+			await expect(table.locator('tbody tr').first().locator('[data-district]')).toBeHidden()
+		}
+		await table.getByRole('button', { name: 'Vento máx.' }).click()
+		await expect(page).toHaveURL(/\?ordem=ventoMax$/)
+		await expect(table.getByRole('columnheader', { name: 'Vento máx.', exact: true })).toHaveAttribute('aria-sort', 'descending')
+		await noHorizontalScroll(page)
+	})
+}

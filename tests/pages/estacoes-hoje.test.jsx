@@ -2,8 +2,9 @@
 // computed by the /api/observations function from the fixtures' 24 h.
 
 import { screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
+import { makeFixtures } from '../fixtures/data.js'
 import { mockApi } from '../helpers/api.js'
 import { renderRoute } from '../helpers/render.jsx'
 
@@ -85,4 +86,92 @@ test('observations without `today` (older function) → dashes, page fine', asyn
 	renderRoute('/estacoes')
 	const t = await table()
 	expect(cell(t, 'Sines', 'Máx.')).toHaveTextContent('—')
+})
+
+// Follow-ups on #48 (user's answers on PR #49).
+describe('"Mais chuva hoje" tile', () => {
+	const tile = async (label) => (await screen.findByText(label, {}, { timeout: 3000 })).closest('a')
+	test('next to the last-hour tile: highest rain since 00h', async () => {
+		mockApi({ now: NOW })
+		renderRoute('/estacoes')
+		await table()
+		expect(await tile('Mais chuva na última hora')).toHaveTextContent('Lisboa, Chuva Forte (Teste)')
+		const t = await tile('Mais chuva hoje')
+		await waitFor(() => expect(t).toHaveTextContent('53,0 mm'))
+		expect(t).toHaveTextContent('Lisboa, Chuva Forte (Teste)')
+		expect(t).toHaveAttribute('href', expect.stringMatching(/^\/estacao\/9900010-/))
+	})
+	test('"≥" when the leading station has hours without a reading', async () => {
+		const fx = makeFixtures(NOW)
+		// Sines (which misses an hour) gets the most rain today.
+		const hour = Object.keys(fx.observations).sort().at(-2)
+		fx.observations[hour]['1200541'].precAcumulada = 80
+		mockApi({ now: NOW, fx })
+		renderRoute('/estacoes')
+		await table()
+		const t = await tile('Mais chuva hoje')
+		await waitFor(() => expect(t).toHaveTextContent('Sines'))
+		expect(t).toHaveTextContent(/≥ \d/)
+	})
+	test('nobody has rain today → 0,0 mm, like the last-hour tile', async () => {
+		const fx = makeFixtures(NOW)
+		for (const row of Object.values(fx.observations)) for (const o of Object.values(row)) o.precAcumulada = 0
+		mockApi({ now: NOW, fx })
+		renderRoute('/estacoes')
+		await table()
+		const t = await tile('Mais chuva hoje')
+		await waitFor(() => expect(t).toHaveTextContent('0,0 mm'))
+		// Same station as the last-hour tile: ties go to the first name A→Z.
+		const lastHour = await tile('Mais chuva na última hora')
+		expect(t.querySelector('p:last-child').textContent).toBe(lastHour.querySelector('p:last-child').textContent)
+	})
+})
+
+describe('phone list: the "Hoje" line never repeats the big value', () => {
+	beforeEach(() => {
+		vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+			matches: query.includes('max-width: 639px'),
+			media: query,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		}))
+	})
+	const todayLine = async (station) => {
+		const list = await screen.findByRole('list', { name: 'Estações' }, { timeout: 3000 })
+		const item = await waitFor(() => within(list).getAllByRole('listitem').find((li) => li.querySelector('[data-station-name]').textContent === station))
+		return item.querySelector('[data-today]')
+	}
+	test('sorted by name: min–max and rain', async () => {
+		mockApi({ now: NOW })
+		renderRoute('/estacoes')
+		expect(await todayLine('Lisboa, Chuva Forte (Teste)')).toHaveTextContent(/^Hoje .+–.+ · 53,0 mm$/)
+	})
+	test('sorted by Chuva desde 0h: no rain in the line', async () => {
+		mockApi({ now: NOW })
+		renderRoute('/estacoes?ordem=chuvaHoje')
+		const line = await todayLine('Lisboa, Chuva Forte (Teste)')
+		expect(line).toHaveTextContent(/^Hoje .+–.+°C$/)
+		expect(line).not.toHaveTextContent('mm')
+	})
+	test('sorted by Máx.: shows the min and the rain, not the max', async () => {
+		mockApi({ now: NOW })
+		renderRoute('/estacoes?ordem=tmax')
+		expect(await todayLine('Lisboa, Chuva Forte (Teste)')).toHaveTextContent(/^Hoje mín\. [\d,]+ °C · 53,0 mm$/)
+	})
+	test('sorted by Mín.: shows the max', async () => {
+		mockApi({ now: NOW })
+		renderRoute('/estacoes?ordem=tmin')
+		expect(await todayLine('Lisboa, Chuva Forte (Teste)')).toHaveTextContent(/^Hoje máx\. [\d,]+ °C · 53,0 mm$/)
+	})
+	test('nothing left → no line (only rain today, sorted by it)', async () => {
+		const fx = makeFixtures(NOW)
+		// Sines: temperatures all -99 today, rain only.
+		for (const row of Object.values(fx.observations)) if (row['1200541']) row['1200541'].temperatura = -99
+		mockApi({ now: NOW, fx })
+		renderRoute('/estacoes?ordem=chuvaHoje')
+		const list = await screen.findByRole('list', { name: 'Estações' }, { timeout: 3000 })
+		await waitFor(() => expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(3))
+		const item = within(list).getAllByRole('listitem').find((li) => li.querySelector('[data-station-name]').textContent === 'Sines')
+		expect(item.querySelector('[data-today]')).toBeNull()
+	})
 })
