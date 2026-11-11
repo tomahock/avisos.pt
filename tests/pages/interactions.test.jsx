@@ -9,6 +9,10 @@ import { BROKEN_STATION_ID, STATION_ID, makeFixtures } from '../fixtures/data.js
 import { mockApi } from '../helpers/api.js'
 import { renderRoute } from '../helpers/render.jsx'
 
+// Wait until every loading spinner is gone — i.e. the data is rendered —
+// so assertions run against the real page, not the loading screen.
+const settled = () => waitFor(() => expect(document.querySelector('.fa-spin')).toBeNull(), { timeout: 3000 })
+
 afterEach(() => {
 	localStorage.clear()
 	document.documentElement.classList.remove('dark')
@@ -184,6 +188,23 @@ describe('station page', () => {
 	})
 })
 
+describe('district incidents (ANEPC, adverse weather)', () => {
+	test('Lisboa shows its incident, Porto its own', async () => {
+		mockApi()
+		renderRoute('/distrito/lisboa')
+		expect(await screen.findByText(/Queda de árvore/)).toBeInTheDocument()
+		expect(screen.getByText(/Sintra/)).toBeInTheDocument()
+		expect(screen.queryByText(/Maia/)).not.toBeInTheDocument()
+	})
+	test('incidents endpoint down → the district page still renders', async () => {
+		mockApi({ overrides: { '/api/incidents/fma': 502 } })
+		renderRoute('/distrito/lisboa')
+		await screen.findByRole('heading', { level: 1, name: 'Avisos meteorológicos para Lisboa' })
+		await settled()
+		expect(screen.queryByText(/Queda de árvore/)).not.toBeInTheDocument()
+	})
+})
+
 describe('district stations section', () => {
 	test('metric switcher defaults from the warnings and can be changed', async () => {
 		mockApi()
@@ -197,12 +218,14 @@ describe('district stations section', () => {
 })
 
 describe('every page has exactly one h1 (SEO + screen readers)', () => {
-	test.each(['/', '/mapa', '/cronologia', '/historico', '/criterios', '/estacoes', '/distrito/lisboa', `/estacao/${STATION_ID}-lisboa-geofisico`, '/xpto'])(
+	// /mapa is checked in e2e/routes.spec.js (Leaflet needs a real browser).
+	test.each(['/', '/cronologia', '/historico', '/criterios', '/estacoes', '/distrito/lisboa', `/estacao/${STATION_ID}-lisboa-geofisico`, '/xpto'])(
 		'%s',
 		async (path) => {
 			mockApi()
 			renderRoute(path)
 			await screen.findByRole('heading', { level: 1 }, { timeout: 3000 })
+			await settled()
 			expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
 		}
 	)
@@ -219,10 +242,19 @@ describe('odd data never breaks a page', () => {
 		fx.history.push({ ...fx.history[0], id: 'x', area: 'XYZ', type: 'Granizo', fromLevel: 'purple', toLevel: null })
 		return fx
 	}
-	test.each(['/', '/cronologia', '/historico', '/distrito/lisboa', '/estacoes'])('%s', async (path) => {
+	// Each page must get past loading and show data-driven content.
+	test.each([
+		['/', () => screen.getAllByRole('link', { name: /Granizo|Lisboa/ })],
+		['/cronologia', () => screen.getAllByRole('button', { name: /Lisboa/ })],
+		['/historico', () => document.querySelectorAll('main ol > li')],
+		['/distrito/lisboa', () => screen.getAllByText(/Granizo/)],
+		['/estacoes', () => within(screen.getByRole('table')).getAllByRole('row')],
+	])('%s', async (path, content) => {
 		mockApi({ fx: odd() })
 		renderRoute(path)
-		expect(await screen.findByRole('heading', { level: 1 }, { timeout: 3000 })).toBeInTheDocument()
+		await screen.findByRole('heading', { level: 1 }, { timeout: 3000 })
+		await settled()
+		expect(content().length).toBeGreaterThan(0)
 		expect(screen.queryByText(/Não foi possível/)).not.toBeInTheDocument()
 	})
 })

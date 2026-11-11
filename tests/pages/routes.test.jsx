@@ -166,6 +166,7 @@ describe('bad query parameters fall back to defaults', () => {
 		mockApi()
 		renderRoute(path)
 		expect(await screen.findByRole('heading', { level: 1 }, { timeout: 3000 })).toBeInTheDocument()
+		await waitFor(() => expect(document.querySelector('.fa-spin')).toBeNull(), { timeout: 3000 })
 		expect(screen.queryByText(/Não foi possível/)).not.toBeInTheDocument()
 	})
 })
