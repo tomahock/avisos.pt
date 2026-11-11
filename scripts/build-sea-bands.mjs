@@ -10,8 +10,10 @@
 //   1. land  = union of every concelho (continent + islands) and of Spain
 //      (scripts/data/spain-near-pt.geojson, Natural Earth, public domain —
 //      without it the bands of Viana, Beja and Faro would spill over the
-//      land border and the border itself would count as coast); holes left
-//      between the two sources are filled
+//      land border and the border itself would count as coast). The mainland
+//      is then morphologically closed (CLOSE_KM) so estuary mouths and lagoon
+//      inlets are sealed and the inner waters (the Tejo estuary) count as
+//      land: the band starts at the open coast. Holes are filled
 //   2. seeds = vertices of the land outline, each labelled with the area of
 //      the concelho it comes from ("ES" for Spain's coast, which only blocks);
 //      Voronoi cells of the seeds,
@@ -29,7 +31,7 @@ import { gzipSync } from 'node:zlib'
 
 import * as turf from '@turf/turf'
 
-import { codeFromContinentalName } from '../src/data/ipmaAreas.js'
+import { IPMA_AREAS, codeFromContinentalName } from '../src/data/ipmaAreas.js'
 import { codeForFeature } from '../src/data/islandConcelhos.js'
 import { SEA_AREAS, SEA_BAND_KM } from '../src/data/seaAreas.js'
 
@@ -67,12 +69,23 @@ const dedupe = (ring) => ring.filter((c, i) => i === 0 || c[0] !== ring[i - 1][0
 const t0 = Date.now()
 const log = (msg) => console.log(`[${((Date.now() - t0) / 1000).toFixed(1)}s] ${msg}`)
 
-// Union, then drop interior rings (slivers between the PT and ES outlines).
-const merged = turf.union(turf.featureCollection([...features, ...spain]))
-const land = turf.multiPolygon(
-	(merged.geometry.type === 'Polygon' ? [merged.geometry.coordinates] : merged.geometry.coordinates).map((p) => [p[0]])
+const outerRings = (f) => turf.multiPolygon(polygonsOf(f.geometry).map((p) => [p[0]]))
+
+// Mainland (continent + Spain): union, then a morphological closing (grow by
+// CLOSE_KM, shrink back) so inlets narrower than 2 × CLOSE_KM are sealed at
+// the coast — the Tejo mouth (Belém–Trafaria), river mouths, lagoon inlets.
+// Dropping the interior rings afterwards turns what they enclosed (the inner
+// Tejo estuary, slivers between the PT and ES outlines) into "land", so the
+// band starts at the open coast. Islands are left as drawn: closing would
+// merge Faial and Pico (~6 km apart) and they have no estuaries.
+const CLOSE_KM = 1.5
+const isIsland = (f) => ['acores', 'madeira'].includes(IPMA_AREAS[f.properties.code]?.region)
+const mainland = outerRings(turf.union(turf.featureCollection([...features.filter((f) => !isIsland(f)), ...spain])))
+const closed = outerRings(
+	turf.buffer(turf.buffer(mainland, CLOSE_KM, { units: 'kilometers', steps: 8 }), -CLOSE_KM, { units: 'kilometers', steps: 8 })
 )
-log('land union')
+const land = outerRings(turf.union(turf.featureCollection([closed, ...features.filter(isIsland)])))
+log('land union + closing')
 
 // Every concelho vertex → its area, for labelling seeds.
 const vertexCode = new Map()
@@ -80,9 +93,39 @@ for (const f of features) {
 	if (!f.properties.code) continue
 	turf.coordEach(f, ([x, y]) => vertexCode.set(`${x},${y}`, f.properties.code))
 }
-// Simplification keeps original vertices, so PT seeds match exactly; the rest
-// are Spain's coast (or a PT/ES junction) and only block.
-const labelFor = ([x, y]) => vertexCode.get(`${x},${y}`) ?? 'ES'
+// The closed outline has new vertices: label each seed by the nearest
+// concelho vertex or Spain vertex (Spain only blocks). Brute force over a
+// 0.1° grid of buckets.
+const BUCKET = 0.1
+const buckets = new Map()
+const addVertex = ([x, y], code) => {
+	const k = `${Math.floor(x / BUCKET)},${Math.floor(y / BUCKET)}`
+	if (!buckets.has(k)) buckets.set(k, [])
+	buckets.get(k).push([x, y, code])
+}
+for (const [k, code] of vertexCode) addVertex(k.split(',').map(Number), code)
+for (const f of spain) turf.coordEach(f, (c) => addVertex(c, 'ES'))
+function labelFor([x, y]) {
+	const exact = vertexCode.get(`${x},${y}`)
+	if (exact) return exact
+	const [bx, by] = [Math.floor(x / BUCKET), Math.floor(y / BUCKET)]
+	let best = 'ES'
+	let bestD = Infinity
+	for (let r = 0; r <= 3 && bestD === Infinity; r++) {
+		for (let i = bx - r; i <= bx + r; i++) {
+			for (let j = by - r; j <= by + r; j++) {
+				for (const [vx, vy, code] of buckets.get(`${i},${j}`) ?? []) {
+					const d = (vx - x) ** 2 + (vy - y) ** 2
+					if (d < bestD) {
+						bestD = d
+						best = code
+					}
+				}
+			}
+		}
+	}
+	return best
+}
 
 const outline = turf.simplify(land, { tolerance: SEED_TOLERANCE, highQuality: false })
 const seen = new Set()
