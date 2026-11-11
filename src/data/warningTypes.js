@@ -16,6 +16,8 @@ const TYPE_META = {
 	'Radiação UV': { icon: 'fa-sun', label: 'Radiação UV' },
 }
 
+export const WARNING_TYPE_NAMES = Object.keys(TYPE_META)
+
 const FALLBACK = { icon: 'fa-triangle-exclamation', label: null }
 
 export function warningTypeMeta(name) {

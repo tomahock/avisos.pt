@@ -10,7 +10,8 @@
 		"dev:cf": "wrangler pages dev -- npm run dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"lint": "eslint src"
+		"lint": "eslint src",
+		"test": "TZ=Europe/Lisbon node --test 'src/**/*.test.js'"
 	},
 	"dependencies": {
 		"leaflet": "^1.9.4",
