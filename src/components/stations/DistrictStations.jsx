@@ -3,12 +3,25 @@ import { Link } from 'react-router-dom'
 
 import Sparkline from './Sparkline.jsx'
 import { useMediaQuery } from '../../hooks/useMediaQuery.js'
-import { levelMeta } from '../../data/levels.js'
+import { useShowThresholds } from '../../hooks/useShowThresholds.js'
+import { LEVELS, levelMeta } from '../../data/levels.js'
+import { chartSets, latestLevel } from '../../utils/chartThresholds.js'
+import { levelWord, stationThresholds } from '../../utils/criteriaThresholds.js'
 import { fetchJson } from '../../utils/fetchJson.js'
 import { STATION_METRICS, defaultStationMetric, rainTotal } from '../../utils/stationMetrics.js'
 import { fmtKmh, fmtMm, fmtPct, fmtTemp, reading, stationPath, stationRows, windDir } from '../../utils/stations.js'
 
 const FORMAT = { temperatura: fmtTemp, chuva: fmtMm, vento: fmtKmh, humidade: fmtPct }
+
+// Threshold sets drawn on each measure's sparkline. Rain: the hourly bars vs
+// mm/1h (no 6 h sum on a 96 px chart).
+function sparkSets(sets, metric) {
+	if (metric === 'temperatura') return sets.temperatura
+	if (metric === 'chuva') return sets.chuva.filter((s) => s.key === 'rain1h')
+	if (metric === 'vento') return sets.vento
+	return []
+}
+
 
 // Small line under the station name: the measures that aren't the big one.
 function secondary(o, metric) {
@@ -23,6 +36,15 @@ function secondary(o, metric) {
 		.filter(([k, v]) => k !== metric && v)
 		.map(([, v]) => v)
 		.join(' · ')
+}
+
+function LevelChip({ level }) {
+	if (!level) return null
+	return (
+		<span data-level-chip={level} title={`Última leitura acima do limiar ${levelWord(level)} do IPMA`} className={`shrink-0 rounded px-1 py-px text-[10px] font-bold leading-tight ${LEVELS[level].chip}`}>
+			≥ {levelWord(level)}
+		</span>
+	)
 }
 
 // Stations inside one IPMA area: current reading + 24 h trend of one measure.
@@ -51,6 +73,9 @@ export default function DistrictStations({ code, name, catalog, obs, warnings, n
 	const narrow = useMediaQuery('(max-width: 639px)')
 	const metric = picked ?? auto.metric
 	const meta = STATION_METRICS[metric]
+	const [showThresholds] = useShowThresholds()
+	const criteria = useMemo(() => stationThresholds(code), [code])
+	const sets = useMemo(() => sparkSets(chartSets(showThresholds ? criteria : null), metric), [criteria, showThresholds, metric])
 
 	// The user's choice belongs to one district; reset when navigating.
 	useEffect(() => setPicked(null), [code])
@@ -139,13 +164,17 @@ export default function DistrictStations({ code, name, catalog, obs, warnings, n
 						>
 							<span className="min-w-0 flex-1">
 								<span className="block truncate text-sm font-medium text-gray-900">{r.name}</span>
-								<span className="block truncate text-xs text-gray-500">{r.obs ? secondary(r.obs, metric) || '—' : 'Sem leitura na última hora'}</span>
+								<span className="flex min-w-0 items-center gap-1.5">
+									{showThresholds && <LevelChip level={latestLevel(criteria, metric, reading(r.obs, meta.field))} />}
+									<span className="truncate text-xs text-gray-500">{r.obs ? secondary(r.obs, metric) || '—' : 'Sem leitura na última hora'}</span>
+								</span>
 							</span>
 							<Sparkline
 								values={trendOf(r.id)}
 								kind={meta.kind}
 								width={narrow ? 64 : 96}
 								label={`${meta.label} nas últimas 24 horas em ${r.name}`}
+								thresholds={sets}
 							/>
 							<span className="w-[5.75rem] shrink-0 text-right">
 								<span className="block text-lg font-semibold leading-tight text-gray-900 tabular-nums">{bigValue(r) ?? '—'}</span>

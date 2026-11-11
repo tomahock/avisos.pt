@@ -1,8 +1,10 @@
 import { expect } from '@playwright/test'
 
 // Third-party assets (Font Awesome, Google Fonts, map tiles) may be slow or
-// blocked in CI — only errors from our own code count.
-const IGNORED = [/Failed to load resource/, /cdnjs|fonts\.g|tile\.openstreetmap|cartocdn/i]
+// blocked in CI — only errors from our own code count. The AdSense script
+// (index.html) sometimes frames www.google.com, which logs a report-only CSP
+// "frame-ancestors" message that isn't ours (flaky on CI, #44).
+const IGNORED = [/Failed to load resource/, /cdnjs|fonts\.g|tile\.openstreetmap|cartocdn/i, /Framing 'https:\/\/[^']*google[^']*' violates .*frame-ancestors/]
 
 /** Collects console errors and uncaught exceptions; call `assertClean()` at the end. */
 export function watchErrors(page) {

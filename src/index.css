@@ -41,6 +41,12 @@
 	--chart-line: #4f46e5;
 	--chart-grid: #e2e8f0;
 	--chart-ink: #64748b;
+	/* IPMA warning thresholds on charts: LEVELS fills are too pale on white
+	   (yellow-400), so light mode uses darker shades. */
+	--chart-warn-yellow: #ca8a04;
+	--chart-warn-orange: #ea580c;
+	--chart-warn-red: #dc2626;
+	--chart-overlay: #0f766e;
 	color-scheme: light;
 }
 
@@ -82,6 +88,10 @@
 	--chart-line: #818cf8;
 	--chart-grid: #263449;
 	--chart-ink: #94a3b8;
+	--chart-warn-yellow: #facc15;
+	--chart-warn-orange: #fb923c;
+	--chart-warn-red: #f87171;
+	--chart-overlay: #2dd4bf;
 	color-scheme: dark;
 }
 @layer base {

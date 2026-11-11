@@ -8,9 +8,14 @@ import ShareButtons from '../components/share/ShareButtons.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
 import StationChart from '../components/stations/StationChart.jsx'
+import ThresholdsToggle from '../components/stations/ThresholdsToggle.jsx'
 import { IPMA_AREAS } from '../data/ipmaAreas.js'
 import { levelMeta, worstLevelId } from '../data/levels.js'
+import { useShowThresholds } from '../hooks/useShowThresholds.js'
 import { useStationDaily, useStationSeries } from '../hooks/useStationSeries.js'
+import { chartSets } from '../utils/chartThresholds.js'
+import { stationThresholds } from '../utils/criteriaThresholds.js'
+import { rollingSum } from '../utils/rolling.js'
 import { useWarningsData } from '../hooks/useWarningsData.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { areaWarnings, districtPath, warningHeadline } from '../utils/share.js'
@@ -138,7 +143,23 @@ function HourlyTable({ points }) {
 	)
 }
 
-function HourlySection({ id }) {
+const WIND_NOTE_REGION = { continente: 'continente', madeira: 'madeira', acores: 'acores' }
+
+// Under the wind chart: the gust lines are only a reference.
+function WindNote({ region }) {
+	return (
+		<>
+			Os avisos de vento usam a rajada máxima; as estações só reportam o vento médio — as linhas de rajada são referência
+			{region === 'acores' ? ' (as de vento médio comparam diretamente)' : ''}. Nas terras altas os limiares são mais altos —{' '}
+			<Link to={`/criterios?regiao=${WIND_NOTE_REGION[region]}`} className="text-primary-700">
+				ver critérios
+			</Link>
+			.
+		</>
+	)
+}
+
+function HourlySection({ id, sets, region }) {
 	const [hours, setHours] = useState(48)
 	const [hoverIdx, setHoverIdx] = useState(null)
 	const { points, limited } = useStationSeries(id, hours)
@@ -146,6 +167,17 @@ function HourlySection({ id }) {
 	const xLabel = useMemo(() => hourlyXLabel(shown), [shown])
 
 	const series = (field) => (points ?? []).map((p) => ({ t: p.t, v: p[field] }))
+	// 6 h rolling rain, compared with the mm/6h criterion (only with criteria).
+	const rain6h = useMemo(() => rollingSum((points ?? []).map((p) => p.precAcumulada), 6), [points])
+	const extra = {
+		temperatura: { thresholds: sets.temperatura, note: sets.temperatura.length ? 'Os avisos de Tempo Quente/Frio exigem ≥ 48 h.' : null },
+		precAcumulada: {
+			thresholds: sets.chuva,
+			overlay: sets.chuva.length ? { values: rain6h, label: '6 h', format: fmtMm } : null,
+			note: sets.chuva.length ? 'Linha tracejada verde: chuva das últimas 6 h, comparada com os limiares «6 h»; barras: chuva em cada hora.' : null,
+		},
+		intensidadeVentoKM: { thresholds: sets.vento, note: sets.vento.length ? <WindNote region={region} /> : null },
+	}
 
 	return (
 		<section className="mt-8">
@@ -201,6 +233,7 @@ function HourlySection({ id }) {
 								xLabel={xLabel}
 								hoverIdx={hoverIdx}
 								onHover={setHoverIdx}
+								{...extra[field]}
 							/>
 						))}
 					</div>
@@ -211,7 +244,7 @@ function HourlySection({ id }) {
 	)
 }
 
-function DailySection({ id }) {
+function DailySection({ id, sets }) {
 	const daily = useStationDaily(id, 30)
 	const [hoverIdx, setHoverIdx] = useState(null)
 	if (!daily || daily.length === 0) return null
@@ -234,6 +267,8 @@ function DailySection({ id }) {
 					xLabel={xLabel}
 					hoverIdx={hoverIdx}
 					onHover={setHoverIdx}
+					thresholds={sets.range}
+					note={sets.range.length ? 'Os avisos de Tempo Quente/Frio exigem ≥ 48 h.' : null}
 				/>
 				<StationChart
 					title="Precipitação por dia"
@@ -289,6 +324,7 @@ export default function EstacaoPage() {
 	const navigate = useNavigate()
 	const id = stationIdFromSlug(slug)
 	const { warnings, stations, stationsStatus, obs, obsHour, updatedAt, retry } = useWarningsData()
+	const [showThresholds] = useShowThresholds()
 
 	const rows = useMemo(() => stationRows(stations, obs), [stations, obs])
 	const station = rows.find((r) => r.id === id) ?? null
@@ -333,6 +369,8 @@ export default function EstacaoPage() {
 	const o = station.obs
 	const when = obsDate(obsHour)
 	const wind = reading(o, 'intensidadeVentoKM')
+	const criteria = station.area ? stationThresholds(station.area) : null
+	const sets = chartSets(showThresholds ? criteria : null)
 
 	return (
 		<Layout updatedAt={updatedAt}>
@@ -399,8 +437,9 @@ export default function EstacaoPage() {
 					</div>
 				</section>
 
-				<HourlySection id={station.id} />
-				<DailySection id={station.id} />
+				{criteria && <ThresholdsToggle areaName={area?.name} regionKey={criteria.region} />}
+				<HourlySection id={station.id} sets={sets} region={criteria?.region} />
+				<DailySection id={station.id} sets={sets} />
 				<Nearby station={station} rows={rows} />
 
 				<p className="mt-8 text-xs text-gray-500">
