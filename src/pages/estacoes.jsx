@@ -5,6 +5,7 @@ import Layout from '../layouts/index.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
 import { IPMA_AREAS } from '../data/ipmaAreas.js'
+import { useMediaQuery } from '../hooks/useMediaQuery.js'
 import { useWarningsData } from '../hooks/useWarningsData.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { PAGE_META, districtPath } from '../utils/share.js'
@@ -17,7 +18,10 @@ const REGIONS = [
 	{ key: 'madeira', label: 'Madeira' },
 ]
 
-// Sortable columns. `dir` is the default direction when picked.
+// Sortable columns. `dir` is the default direction when picked. The station
+// name ('nome', A→Z) is the default sort and isn't written in the URL.
+const DEFAULT_SORT = 'nome'
+const NAME_SORT = { key: 'nome', label: 'Estação', dir: 'asc' }
 const COLUMNS = [
 	{ key: 'temperatura', label: 'Temp.', fmt: fmtTemp, dir: 'desc' },
 	{ key: 'intensidadeVentoKM', label: 'Vento', fmt: fmtKmh, dir: 'desc' },
@@ -25,6 +29,9 @@ const COLUMNS = [
 	{ key: 'humidade', label: 'Humidade', fmt: fmtPct, dir: 'desc' },
 	{ key: 'pressao', label: 'Pressão', fmt: fmtHpa, dir: 'asc' },
 ]
+
+// pt-PT collation, accents and case ignored ("Évora" between "Bragança" and "Funchal").
+const byName = (a, b) => a.name.localeCompare(b.name, 'pt', { sensitivity: 'base' })
 
 function normalize(s) {
 	return String(s)
@@ -47,14 +54,160 @@ function Highlight({ label, row, field, fmt }) {
 	)
 }
 
+// Ties go to the first name A→Z — the same tie-break as the sorted list, so
+// a tile and the top row of that column always name the same station.
 function extreme(rows, field, pick) {
 	let best = null
 	for (const r of rows) {
 		const v = reading(r.obs, field)
 		if (v == null) continue
-		if (!best || pick(v, reading(best.obs, field))) best = r
+		const bv = best ? reading(best.obs, field) : null
+		if (!best || pick(v, bv) || (v === bv && byName(r, best) < 0)) best = r
 	}
 	return best
+}
+
+function WindValue({ obs }) {
+	const v = reading(obs, 'intensidadeVentoKM')
+	const dir = v != null ? windDir(reading(obs, 'idDireccVento')) : null
+	return (
+		<>
+			{fmtKmh(v) ?? <span className="text-gray-300">—</span>}
+			{dir && <span className="text-gray-400 font-normal"> {dir}</span>}
+		</>
+	)
+}
+
+function cellValue(c, obs) {
+	if (c.key === 'intensidadeVentoKM') return <WindValue obs={obs} />
+	return c.fmt(reading(obs, c.key)) ?? <span className="text-gray-300">—</span>
+}
+
+function SortIcon({ active, dir }) {
+	return <i className={`fas ${active ? (dir === 'asc' ? 'fa-arrow-up' : 'fa-arrow-down') : 'fa-sort opacity-40'} text-[10px]`} aria-hidden />
+}
+
+// Wider screens: a table; the name column stays put when the table scrolls
+// sideways. Stacking: header corner (z-20, opaque) above the body name cells
+// (z-10) so a name can never paint over the header (#46).
+function StationTable({ rows, sortKey, sortDir, onSort }) {
+	const ariaSort = (key) => (sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none')
+	return (
+		<div className="mt-4 overflow-x-auto rounded-xl border border-gray-200">
+			<table className="w-full text-sm tabular-nums">
+				<thead className="bg-gray-50 text-xs text-gray-500">
+					<tr>
+						<th className="sticky left-0 z-20 bg-gray-50 text-left font-semibold px-3 py-2" aria-sort={ariaSort('nome')}>
+							<button type="button" onClick={() => onSort('nome')} className={`inline-flex items-center gap-1 ${sortKey === 'nome' ? 'text-gray-900' : 'hover:text-gray-900'}`}>
+								Estação
+								<SortIcon active={sortKey === 'nome'} dir={sortDir} />
+							</button>
+						</th>
+						<th className="text-left font-semibold px-3 py-2">Distrito / região</th>
+						{COLUMNS.map((c) => (
+							<th key={c.key} className="text-right font-semibold px-3 py-2" aria-sort={ariaSort(c.key)}>
+								<button type="button" onClick={() => onSort(c.key)} className={`inline-flex items-center gap-1 ${sortKey === c.key ? 'text-gray-900' : 'hover:text-gray-900'}`}>
+									{c.label}
+									<SortIcon active={sortKey === c.key} dir={sortDir} />
+								</button>
+							</th>
+						))}
+					</tr>
+				</thead>
+				<tbody>
+					{rows.map((r) => (
+						<tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
+							<td className="sticky left-0 z-10 bg-surface px-3 py-1.5 font-medium">
+								<Link to={stationPath(r.id, r.name)} className="block text-gray-900 no-underline hover:underline leading-tight">
+									{r.name}
+								</Link>
+							</td>
+							<td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">
+								{r.area ? (
+									<Link to={districtPath(r.area)} className="text-gray-600 no-underline hover:underline">
+										{IPMA_AREAS[r.area]?.name}
+									</Link>
+								) : (
+									'—'
+								)}
+							</td>
+							{COLUMNS.map((c) => (
+								<td key={c.key} className={`px-3 py-1.5 text-right whitespace-nowrap ${sortKey === c.key ? 'text-gray-900 font-semibold' : 'text-gray-700'}`}>
+									{cellValue(c, r.obs)}
+								</td>
+							))}
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	)
+}
+
+// Phones: one list item per station — name and readings in the same box, so
+// they can't drift apart (the old sticky table cells were painted out of step
+// with their rows by some mobile browsers, #46). The sorted measure is the
+// big value (temperature when sorting by name); the others go underneath.
+const PHONE_SECONDARY = ['temperatura', 'intensidadeVentoKM', 'precAcumulada']
+
+function StationList({ rows, sortKey, sortDir, sorts, onSort }) {
+	const primary = COLUMNS.find((c) => c.key === sortKey) ?? COLUMNS[0]
+	const secondary = COLUMNS.filter((c) => PHONE_SECONDARY.includes(c.key) && c.key !== primary.key)
+	const asc = sortDir === 'asc'
+	return (
+		<>
+			<div className="mt-4 flex items-center gap-2 text-sm">
+				<label className="flex items-center gap-2 text-gray-600">
+					Ordenar por
+					<select
+						value={sortKey}
+						onChange={(e) => onSort(e.target.value, sorts.find((c) => c.key === e.target.value).dir)}
+						className="rounded-md border border-gray-200 bg-surface px-2 py-1.5 text-sm text-gray-900"
+					>
+						{sorts.map((c) => (
+							<option key={c.key} value={c.key}>
+								{c.key === 'nome' ? 'Nome' : c.label}
+							</option>
+						))}
+					</select>
+				</label>
+				<button
+					type="button"
+					onClick={() => onSort(sortKey)}
+					aria-label={`Ordem: ${asc ? 'ascendente' : 'descendente'} (mudar)`}
+					className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-surface px-2 py-1.5 text-gray-700"
+				>
+					<i className={`fas ${asc ? 'fa-arrow-up' : 'fa-arrow-down'} text-xs`} aria-hidden />
+					{sortKey === 'nome' ? (asc ? 'A–Z' : 'Z–A') : asc ? 'menor' : 'maior'}
+				</button>
+			</div>
+			<ul aria-label="Estações" className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-surface list-none m-0 p-0 tabular-nums">
+				{rows.map((r) => (
+					<li key={r.id} data-station-id={r.id}>
+						<Link to={stationPath(r.id, r.name)} className="flex items-start gap-3 px-3 py-2 no-underline hover:bg-gray-50">
+							<span className="min-w-0 flex-1">
+								<span data-station-name className="block text-sm font-medium leading-tight text-gray-900">{r.name}</span>
+								<span className="block text-[11px] leading-tight text-gray-500">{IPMA_AREAS[r.area]?.name ?? '—'}</span>
+							</span>
+							<span className="shrink-0 text-right">
+								<span data-primary className="block text-base font-semibold leading-tight text-gray-900 whitespace-nowrap">
+									{cellValue(primary, r.obs)}
+								</span>
+								<span className="block text-[11px] leading-tight text-gray-500 whitespace-nowrap">
+									{secondary.map((c, i) => (
+										<span key={c.key}>
+											{i > 0 && ' · '}
+											{cellValue(c, r.obs)}
+										</span>
+									))}
+								</span>
+							</span>
+						</Link>
+					</li>
+				))}
+			</ul>
+		</>
+	)
 }
 
 export default function EstacoesPage() {
@@ -63,19 +216,25 @@ export default function EstacoesPage() {
 	const { stations, stationsStatus, obs, obsHour, warnings, updatedAt, retry } = useWarningsData()
 	const [params, setParams] = useSearchParams()
 	const region = params.get('regiao') ?? ''
-	const sortKey = COLUMNS.some((c) => c.key === params.get('ordem')) ? params.get('ordem') : 'temperatura'
-	const sortDir = params.get('dir') === 'asc' || params.get('dir') === 'desc' ? params.get('dir') : COLUMNS.find((c) => c.key === sortKey).dir
+	const sorts = [NAME_SORT, ...COLUMNS]
+	const sortKey = sorts.some((c) => c.key === params.get('ordem')) ? params.get('ordem') : DEFAULT_SORT
+	const sortCol = sorts.find((c) => c.key === sortKey)
+	const sortDir = params.get('dir') === 'asc' || params.get('dir') === 'desc' ? params.get('dir') : sortCol.dir
 	const q = params.get('q') ?? ''
+	// Phones get a list (no sticky table cells, #46); wider screens the table.
+	const narrow = useMediaQuery('(max-width: 639px)')
 
 	function update(next) {
-		const merged = { regiao: region, ordem: sortKey === 'temperatura' ? '' : sortKey, dir: params.get('dir') ?? '', q, ...next }
+		const merged = { regiao: region, ordem: sortKey === DEFAULT_SORT ? '' : sortKey, dir: params.get('dir') ?? '', q, ...next }
 		setParams(Object.fromEntries(Object.entries(merged).filter(([, v]) => v)), { replace: true })
 	}
 
-	function sortBy(key) {
-		const col = COLUMNS.find((c) => c.key === key)
-		const dir = key === sortKey ? (sortDir === 'desc' ? 'asc' : 'desc') : col.dir
-		update({ ordem: key === 'temperatura' ? '' : key, dir: dir === col.dir ? '' : dir })
+	// Same column → flip direction; another → its default direction. The
+	// default direction of a column is never written (?dir= only when flipped).
+	function sortBy(key, dir) {
+		const col = sorts.find((c) => c.key === key)
+		const d = dir ?? (key === sortKey ? (sortDir === 'desc' ? 'asc' : 'desc') : col.dir)
+		update({ ordem: key === DEFAULT_SORT ? '' : key, dir: d === col.dir ? '' : d })
 	}
 
 	const rows = useMemo(() => stationRows(stations, obs), [stations, obs])
@@ -89,13 +248,14 @@ export default function EstacoesPage() {
 			? inRegion.filter((r) => normalize(`${r.name} ${IPMA_AREAS[r.area]?.name ?? ''}`).includes(needle))
 			: inRegion
 		const sign = sortDir === 'asc' ? 1 : -1
+		if (sortKey === 'nome') return [...list].sort((a, b) => byName(a, b) * sign)
 		return [...list].sort((a, b) => {
 			const va = reading(a.obs, sortKey)
 			const vb = reading(b.obs, sortKey)
-			if (va == null && vb == null) return a.name.localeCompare(b.name, 'pt')
+			if (va == null && vb == null) return byName(a, b)
 			if (va == null) return 1 // no reading → always last
 			if (vb == null) return -1
-			return (va - vb) * sign || a.name.localeCompare(b.name, 'pt')
+			return (va - vb) * sign || byName(a, b)
 		})
 	}, [inRegion, q, sortKey, sortDir])
 
@@ -158,57 +318,14 @@ export default function EstacoesPage() {
 					</label>
 				</div>
 
-				<div className="mt-4 overflow-x-auto rounded-xl border border-gray-200">
-					<table className="w-full text-sm tabular-nums">
-						<thead className="bg-gray-50 text-xs text-gray-500">
-							<tr>
-								<th className="sticky left-0 z-10 bg-gray-50 text-left font-semibold px-3 py-2">Estação</th>
-								<th className="hidden sm:table-cell text-left font-semibold px-3 py-2">Distrito / região</th>
-								{COLUMNS.map((c) => (
-									<th key={c.key} className="text-right font-semibold px-3 py-2" aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-										<button type="button" onClick={() => sortBy(c.key)} className={`inline-flex items-center gap-1 ${sortKey === c.key ? 'text-gray-900' : 'hover:text-gray-900'}`}>
-											{c.label}
-											<i className={`fas ${sortKey === c.key ? (sortDir === 'asc' ? 'fa-arrow-up' : 'fa-arrow-down') : 'fa-sort opacity-40'} text-[10px]`} aria-hidden />
-										</button>
-									</th>
-								))}
-							</tr>
-						</thead>
-						<tbody>
-							{visible.map((r) => (
-								<tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
-									<td className="sticky left-0 z-10 bg-surface px-3 py-1.5 font-medium max-w-[9.5rem] sm:max-w-none">
-										<Link to={stationPath(r.id, r.name)} className="block text-gray-900 no-underline hover:underline leading-tight">
-											{r.name}
-										</Link>
-										{/* District moves under the name on phones so the values fit on screen. */}
-										{r.area && <span className="sm:hidden block text-[11px] font-normal text-gray-500 leading-tight">{IPMA_AREAS[r.area]?.name}</span>}
-									</td>
-									<td className="hidden sm:table-cell px-3 py-1.5 text-gray-600 whitespace-nowrap">
-										{r.area ? (
-											<Link to={districtPath(r.area)} className="text-gray-600 no-underline hover:underline">
-												{IPMA_AREAS[r.area]?.name}
-											</Link>
-										) : (
-											'—'
-										)}
-									</td>
-									{COLUMNS.map((c) => (
-										<td key={c.key} className={`px-3 py-1.5 text-right whitespace-nowrap ${sortKey === c.key ? 'text-gray-900 font-semibold' : 'text-gray-700'}`}>
-											{c.fmt(reading(r.obs, c.key)) ?? <span className="text-gray-300">—</span>}
-											{c.key === 'intensidadeVentoKM' && reading(r.obs, c.key) != null && windDir(reading(r.obs, 'idDireccVento')) && (
-												<span className="text-gray-400 font-normal"> {windDir(reading(r.obs, 'idDireccVento'))}</span>
-											)}
-										</td>
-									))}
-								</tr>
-							))}
-						</tbody>
-					</table>
-					{visible.length === 0 && <p className="px-3 py-6 text-center text-sm text-gray-500">Nenhuma estação corresponde à pesquisa.</p>}
-				</div>
+				{narrow ? (
+					<StationList rows={visible} sortKey={sortKey} sortDir={sortDir} sorts={sorts} onSort={sortBy} />
+				) : (
+					<StationTable rows={visible} sortKey={sortKey} sortDir={sortDir} onSort={sortBy} />
+				)}
+				{visible.length === 0 && <p className="px-3 py-6 text-center text-sm text-gray-500">Nenhuma estação corresponde à pesquisa.</p>}
 				<p className="mt-3 text-xs text-gray-500">
-					Fonte: IPMA, via API Fogos.pt. Vento = velocidade média na hora (não rajada). Estações sem leitura aparecem no fim.
+					Fonte: IPMA, via API Fogos.pt. Vento = velocidade média na hora (não rajada). Ao ordenar por um valor, as estações sem leitura aparecem no fim.
 				</p>
 			</div>
 		</Layout>
