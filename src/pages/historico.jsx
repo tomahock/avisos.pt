@@ -1,25 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import Layout from '../layouts/index.jsx'
-import HistoryEvent from '../components/history/HistoryEvent.jsx'
+import HistoryDayList from '../components/history/HistoryDayList.jsx'
 import HistoryFilters from '../components/history/HistoryFilters.jsx'
 import StateError from '../components/warnings/StateError.jsx'
-import { fetchJson } from '../utils/fetchJson.js'
-import { groupEventsByDay, historyApiSearch, historyQuery } from '../utils/history.js'
+import { useHistoryEvents } from '../hooks/useHistoryEvents.js'
+import { HISTORY_RECORDING_SINCE, groupEventsByDay, historyApiSearch, historyNow, historyQuery } from '../utils/history.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { PAGE_META } from '../utils/share.js'
-
-// FogosPT started recording warning events on this date — nothing before it.
-const RECORDING_SINCE = '11 de novembro de 2026'
-
-// Rounded so visitors in the same 5 minutes share the edge-cached response.
-const BUCKET_MS = 5 * 60 * 1000
-
-function dayLabel(day) {
-	const [y, m, d] = day.split('-').map(Number)
-	return new Date(y, m - 1, d).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-}
 
 export default function HistoricoPage() {
 	usePageTitle(`${PAGE_META['/historico'].title} · Avisos.pt`, {
@@ -27,27 +16,15 @@ export default function HistoricoPage() {
 	})
 
 	const [searchParams, setSearchParams] = useSearchParams()
-	const [events, setEvents] = useState(null)
-	const [error, setError] = useState(null)
 	const [reloadKey, setReloadKey] = useState(0)
 
-	const search = useMemo(() => {
-		const now = new Date(Math.floor(Date.now() / BUCKET_MS) * BUCKET_MS)
-		return historyApiSearch(historyQuery(searchParams, now))
+	// Rounded "now" (historyNow) so visitors share the edge-cached response.
+	const search = useMemo(
+		() => historyApiSearch(historyQuery(searchParams, historyNow())),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [searchParams.toString(), reloadKey])
-
-	useEffect(() => {
-		const ctrl = new AbortController()
-		setEvents(null)
-		setError(null)
-		fetchJson(`/api/warnings/history?${search}`, ctrl.signal)
-			.then((data) => setEvents(Array.isArray(data) ? data : []))
-			.catch((err) => {
-				if (err.name !== 'AbortError') setError(err.message)
-			})
-		return () => ctrl.abort()
-	}, [search, reloadKey])
+		[searchParams.toString(), reloadKey]
+	)
+	const { events, error } = useHistoryEvents(search, reloadKey)
 
 	const groups = useMemo(() => (events ? groupEventsByDay(events) : []), [events])
 
@@ -92,23 +69,12 @@ export default function HistoricoPage() {
 					<div className="mt-8 border border-gray-200 rounded-xl p-8 text-center">
 						<p className="font-semibold text-gray-900">Ainda não há alterações registadas neste período</p>
 						<p className="mt-1 text-sm text-gray-500">
-							O histórico começou a ser registado a {RECORDING_SINCE}.
+							O histórico começou a ser registado a {HISTORY_RECORDING_SINCE}.
 						</p>
 					</div>
 				) : (
-					<div className="mt-6 flex flex-col gap-6">
-						{groups.map((g) => (
-							<section key={g.day}>
-								<h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 first-letter:uppercase">
-									{dayLabel(g.day)}
-								</h2>
-								<ol className="mt-2 bg-surface border border-gray-200 rounded-lg px-3 list-none m-0">
-									{g.events.map((e) => (
-										<HistoryEvent key={e.id} event={e} />
-									))}
-								</ol>
-							</section>
-						))}
+					<div className="mt-6">
+						<HistoryDayList groups={groups} />
 					</div>
 				)}
 			</div>

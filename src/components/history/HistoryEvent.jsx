@@ -80,7 +80,7 @@ function Detail({ event: e }) {
 	}
 }
 
-export default function HistoryEvent({ event: e }) {
+export default function HistoryEvent({ event: e, showArea = true }) {
 	const style = KIND_STYLE[e.kind] ?? KIND_STYLE.emitido
 	const area = IPMA_AREAS[e.area]
 	return (
@@ -93,7 +93,7 @@ export default function HistoryEvent({ event: e }) {
 					<i className={`fas ${style.icon} text-[10px]`} aria-hidden />
 					{HISTORY_KINDS[e.kind]?.label ?? e.kind}
 				</span>
-				{area ? (
+				{!showArea ? null : area ? (
 					<Link to={districtPath(e.area)} className="font-semibold text-gray-900 no-underline hover:underline">
 						{area.name}
 					</Link>
