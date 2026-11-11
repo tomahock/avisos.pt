@@ -45,6 +45,12 @@ function subCollection(features) {
 	return { type: 'FeatureCollection', features }
 }
 
+// No visible title (the map is the page); search engines and screen
+// readers still need one h1.
+function PageHeading() {
+	return <h1 className="sr-only">{PAGE_META['/mapa'].title}</h1>
+}
+
 export default function MapPage() {
 	usePageTitle(`${PAGE_META['/mapa'].title} · Avisos.pt`, {
 		description: PAGE_META['/mapa'].description,
@@ -135,6 +141,7 @@ export default function MapPage() {
 	if (error) {
 		return (
 			<Layout>
+				<PageHeading />
 				<StateError message={error} onRetry={retry} />
 			</Layout>
 		)
@@ -143,6 +150,7 @@ export default function MapPage() {
 	if (warnings === null || regionData === null) {
 		return (
 			<Layout>
+				<PageHeading />
 				<StateLoading />
 			</Layout>
 		)
@@ -152,6 +160,7 @@ export default function MapPage() {
 
 	return (
 		<Layout updatedAt={updatedAt}>
+			<PageHeading />
 			<div className="px-4 mt-4 space-y-2">
 				<MapPeriodPicker
 					periods={periods}

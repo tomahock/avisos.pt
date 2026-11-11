@@ -23,6 +23,12 @@ function groupByArea(warnings) {
 	return map
 }
 
+// The page has no visible title (the header is the brand); search engines
+// and screen readers still need one h1.
+function PageHeading() {
+	return <h1 className="sr-only">Avisos meteorológicos em vigor em Portugal</h1>
+}
+
 export default function IndexPage() {
 	usePageTitle(DEFAULT_META.title, { description: DEFAULT_META.description })
 
@@ -91,6 +97,7 @@ export default function IndexPage() {
 	if (error) {
 		return (
 			<Layout>
+				<PageHeading />
 				<StateError message={error} onRetry={retry} />
 			</Layout>
 		)
@@ -99,6 +106,7 @@ export default function IndexPage() {
 	if (warnings === null) {
 		return (
 			<Layout>
+				<PageHeading />
 				<StateLoading />
 			</Layout>
 		)
@@ -107,6 +115,7 @@ export default function IndexPage() {
 	if (warnings.length === 0) {
 		return (
 			<Layout updatedAt={updatedAt}>
+				<PageHeading />
 				<StateEmpty />
 			</Layout>
 		)
@@ -114,6 +123,7 @@ export default function IndexPage() {
 
 	return (
 		<Layout updatedAt={updatedAt}>
+			<PageHeading />
 			<DistrictOverview warningsByArea={warningsByArea} />
 			{orderedGroups.map((group) => {
 				const station = nearestStationWithObs(

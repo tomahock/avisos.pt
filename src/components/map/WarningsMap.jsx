@@ -29,6 +29,7 @@ import {
 } from '../../utils/format.js'
 import { districtPath } from '../../utils/share.js'
 import { stationPath } from '../../utils/stations.js'
+import { pointInBounds, stationInBounds } from './bounds.js'
 
 function esc(str) {
 	return String(str ?? '')
@@ -174,7 +175,7 @@ function WarningIconsLayer({ geojson, warningsByCode, bounds, emptyText }) {
 		for (const [code, list] of warningsByCode) {
 			const area = IPMA_AREAS[code]
 			const pos = anchors.get(code)
-			if (!pos || !inBounds([pos[1], pos[0]], bounds)) continue
+			if (!pos || !pointInBounds(pos[1], pos[0], bounds)) continue
 			const items = typesWithLevel(list)
 			out.push({
 				code,
@@ -260,17 +261,6 @@ function StationMarker({ feature, obs }) {
 	)
 }
 
-function inBounds(coords, bounds) {
-	if (!bounds) return true
-	const [lng, lat] = coords
-	return (
-		lat >= bounds.latMin &&
-		lat <= bounds.latMax &&
-		lng >= bounds.lngMin &&
-		lng <= bounds.lngMax
-	)
-}
-
 export default function WarningsMap({
 	geojson,
 	warnings,
@@ -295,7 +285,7 @@ export default function WarningsMap({
 	}, [warnings])
 
 	const filteredStations = useMemo(
-		() => stations.filter((f) => inBounds(f.geometry?.coordinates, bounds)),
+		() => stations.filter((f) => stationInBounds(f, bounds)),
 		[stations, bounds]
 	)
 

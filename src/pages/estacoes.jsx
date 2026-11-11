@@ -60,7 +60,7 @@ function extreme(rows, field, pick) {
 export default function EstacoesPage() {
 	usePageTitle(`${PAGE_META['/estacoes'].title} · Avisos.pt`, { description: PAGE_META['/estacoes'].description })
 
-	const { stations, stationsStatus, obs, obsHour, warnings, error, updatedAt, retry } = useWarningsData()
+	const { stations, stationsStatus, obs, obsHour, warnings, updatedAt, retry } = useWarningsData()
 	const [params, setParams] = useSearchParams()
 	const region = params.get('regiao') ?? ''
 	const sortKey = COLUMNS.some((c) => c.key === params.get('ordem')) ? params.get('ordem') : 'temperatura'

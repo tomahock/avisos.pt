@@ -1,0 +1,65 @@
+name: Testes
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, unitários, build e E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint (.js, .jsx, functions, testes)
+        run: npm run lint
+
+      - name: Unitários, componentes e functions
+        run: npm test -- --coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Versão do Playwright
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E (wrangler pages dev + FogosPT falso)
+        run: npm run test:e2e
+
+      - name: Relatório do Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
