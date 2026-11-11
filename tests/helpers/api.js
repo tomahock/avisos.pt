@@ -5,6 +5,8 @@ import { vi } from 'vitest'
 import { makeFixtures } from '../fixtures/data.js'
 import { fogosRoute } from '../fixtures/fogos.js'
 import * as fma from '../../functions/api/incidents/fma.js'
+import * as madeiraEvent from '../../functions/api/madeira/event.js'
+import * as madeiraOccurrences from '../../functions/api/madeira/occurrences.js'
 import * as observations from '../../functions/api/observations.js'
 import * as recent from '../../functions/api/observations/recent.js'
 import * as stations from '../../functions/api/stations.js'
@@ -25,6 +27,8 @@ function handlerFor(pathname) {
 		'/api/observations': observations,
 		'/api/observations/recent': recent,
 		'/api/incidents/fma': fma,
+		'/api/madeira/event': madeiraEvent,
+		'/api/madeira/occurrences': madeiraOccurrences,
 	}
 	if (fixed[pathname]) return [fixed[pathname], {}]
 	const m = pathname.match(/^\/api\/stations\/([^/]+)\/(observations|daily)$/)

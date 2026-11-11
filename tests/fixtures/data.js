@@ -162,5 +162,71 @@ export function makeFixtures(now = new Date()) {
 		],
 	}
 
-	return { now, warnings, stations, observations, stationSeries, stationDaily, history, incidents }
+	// SRPC, IP-RAM (Madeira) via FogosPT: real UTC instants ("…Z"), unlike
+	// the IPMA warnings. One occurrence per Madeira area + odd ones: copies,
+	// no concelho, no coordinates (before FogosPT/fogosapi#101).
+	const utc = (minutes) => new Date(t + minutes * 60000).toISOString().replace(/\.\d{3}Z$/, 'Z')
+	const occ = (id, minutesAgo, natureCode, nature, parishCode, parish, municipalityCode, municipality, lat, lng, extra = {}) => ({
+		id,
+		copies: 1,
+		start: utc(-minutesAgo),
+		natureCode,
+		nature,
+		firefighters: 2,
+		vehicles: 1,
+		parishCode,
+		parish,
+		municipalityCode,
+		municipality,
+		...(lat === undefined ? {} : { lat, lng, location: lat === null ? null : 'parish' }),
+		entities: ['CMOS'],
+		updatedAt: utc(-minutesAgo + 3),
+		...extra,
+	})
+	const madeiraOccurrences = [
+		occ('occ-funchal-1', 20, '3301', 'Queda de Árvore', '310307', 'São Martinho', '3103', 'Funchal', 32.6443, -16.9381),
+		occ('occ-funchal-2', 50, '3315', 'Inundação de estruturas ou superfícies por precipitação intensa', '310307', 'São Martinho', '3103', 'Funchal', 32.6443, -16.9381, { copies: 2, firefighters: 4 }),
+		occ('occ-sem-concelho', 10, '3313', 'Movimento de massa', null, null, null, null, null, null, { firefighters: 0, vehicles: 0, entities: [] }),
+		occ('occ-canico', 180, '3313', 'Movimento de massa', '310803', 'Caniço', '3108', 'Santa Cruz', 32.6497, -16.8523),
+		occ('occ-santana', 120, '3313', 'Movimento de massa', '310904', 'Santana', '3109', 'Santana', 32.8036, -16.8817),
+		occ('occ-porto-santo', 300, '4305', 'Limpeza de Via e Sinalização de Perigo', '320101', 'Porto Santo', '3201', 'Porto Santo', 33.0703, -16.3398),
+		occ('occ-machico-sem-coords', 360, '3311', 'Queda de elementos de construção em estruturas edificadas', '310403', 'Machico', '3104', 'Machico', undefined),
+	]
+	const madeiraEvent = {
+		id: 'evento-teste',
+		title: 'Depressão Teste – Precipitação e vento forte',
+		zone: 'Madeira e Porto Santo',
+		status: 'ATIVO',
+		active: true,
+		start: utc(-16 * 60),
+		end: utc(-5),
+		untilNow: true,
+		updatedAt: utc(-5),
+		kpi: { occurrences: 48, activeOccurrences: 7, operationals: 120, groundAssets: 50, municipalities: 4, peak: { time: utc(-6 * 60), occurrences: 9 } },
+		summary: 'Desde ontem registaram-se 48 ocorrências na Região, com maior incidência no Funchal.',
+		recommendations: ['Evite deslocações desnecessárias.', 'Mantenha-se afastado de ribeiras, taludes e encostas.'],
+		municipalities: [
+			{ name: 'Funchal', occurrences: 30, operationals: 70, groundAssets: 30, natures: [] },
+			{ name: 'Santana', occurrences: 10, operationals: 20, groundAssets: 10, natures: [] },
+			{ name: 'Porto Santo', occurrences: 3, operationals: 6, groundAssets: 3, natures: [] },
+			{ name: 'Sem concelho', occurrences: 5, operationals: 0, groundAssets: 0, natures: [] },
+		],
+		natures: [{ code: '3313', description: 'Movimento de massa', occurrences: 20, percentage: 41.7 }],
+		hourly: [{ time: utc(-60), occurrences: 3, cumulative: 48 }],
+		roadRestrictions: [
+			{ road: 'ER 101', closed: true, text: 'Cortada ao km 12 devido a derrocada', time: utc(-90) },
+			{ road: 'VR 1', closed: false, text: 'Condicionada a uma via no túnel da Ribeira Brava', time: null },
+		],
+		communiques: [
+			{ title: 'Aviso à população 18/2026 – Depressão Teste', time: utc(-20 * 60), text: 'Texto longo do comunicado…', link: 'https://www.procivmadeira.pt/pt/10-noticias/aviso-18-2026.html', official: true },
+			{ title: 'Comunicado sem ligação', time: utc(-3 * 24 * 60), text: null, link: null, official: true },
+		],
+		parishes: [{ code: '310307', name: 'São Martinho', municipality: 'Funchal', lat: 32.6443, lng: -16.9381, location: 'parish', occurrences: 12, firefighters: 30, vehicles: 12 }],
+		entities: [{ code: 'CMOS', occurrences: 20 }],
+		topOccurrences: madeiraOccurrences.slice(0, 2),
+		notes: 'Dados provisórios, sujeitos a validação.',
+		source: 'SRPC-RAM (Preventech) · IPMA · ECMWF',
+	}
+
+	return { now, warnings, stations, observations, stationSeries, stationDaily, history, incidents, madeiraEvent, madeiraOccurrences }
 }

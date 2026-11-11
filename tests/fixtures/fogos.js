@@ -23,5 +23,7 @@ export function fogosRoute(fx, url) {
 	m = p.match(/^\/v2\/weather\/stations\/(\d+)\/daily$/)
 	if (m) return { status: 200, body: fx.stationDaily(m[1], Number(q.get('days') ?? 30)) }
 	if (p === '/v2/incidents/active') return { status: 200, body: fx.incidents }
+	if (p === '/v2/madeira/events/current') return { status: 200, body: { success: true, data: fx.madeiraEvent ?? null } }
+	if (p === '/v2/madeira/occurrences') return { status: 200, body: { success: true, data: fx.madeiraOccurrences ?? [] } }
 	return { status: 404, body: { error: 'not_found' } }
 }
