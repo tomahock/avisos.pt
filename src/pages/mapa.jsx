@@ -10,6 +10,7 @@ import { fetchJson } from '../utils/fetchJson.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { PAGE_META } from '../utils/share.js'
 import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
+import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
 
 const REGIONS = [
 	{
@@ -49,7 +50,8 @@ export default function MapPage() {
 		description: PAGE_META['/mapa'].description,
 	})
 
-	const [warnings, setWarnings] = useState(null)
+	const [rawWarnings, setWarnings] = useState(null)
+	const warnings = useActiveWarnings(rawWarnings)
 	const [stations, setStations] = useState([])
 	const [obs, setObs] = useState({})
 	const [geoContinental, setGeoContinental] = useState(null)

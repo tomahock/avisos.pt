@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { fetchJson } from '../utils/fetchJson.js'
+import { useActiveWarnings } from './useActiveWarnings.js'
 
 // Warnings (blocking) + stations/observations (best effort), same contract
 // as the index page: enrichment failures never break the page.
 export function useWarningsData() {
-	const [warnings, setWarnings] = useState(null)
+	const [rawWarnings, setWarnings] = useState(null)
+	const warnings = useActiveWarnings(rawWarnings)
 	const [stations, setStations] = useState([])
 	// Station-dependent pages need to tell "still loading" from "failed";
 	// the warnings pages just ignore these.

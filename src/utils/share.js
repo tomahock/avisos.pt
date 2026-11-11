@@ -45,6 +45,17 @@ export const PAGE_META = {
 	},
 }
 
+// Warnings still in force at `nowMs` (endTime is Lisbon wall-clock). FogosPT
+// only serves active ones, but responses are cached (edge 5 min, open tabs for
+// hours) — never show one that has already ended.
+export function activeWarnings(list, nowMs = Date.now()) {
+	if (!Array.isArray(list)) return []
+	return list.filter((w) => {
+		const end = parseWarningTime(w?.endTime)
+		return !Number.isFinite(end) || end >= nowMs
+	})
+}
+
 export function slugify(s) {
 	return String(s)
 		.normalize('NFD')
