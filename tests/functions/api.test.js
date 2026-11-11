@@ -66,11 +66,49 @@ test('/api/stations proxies the catalog', async () => {
 describe('/api/observations keeps only the latest hour', () => {
 	test('picks the latest key', async () => {
 		upstream = { '2026-11-11T10:00': { 1: { temperatura: 10 } }, '2026-11-11T11:00': { 1: { temperatura: 11 } } }
-		expect(await (await call(observations)).json()).toEqual({ hour: '2026-11-11T11:00', stations: { 1: { temperatura: 11 } } })
+		const body = await (await call(observations)).json()
+		expect(body).toMatchObject({ hour: '2026-11-11T11:00', stations: { 1: { temperatura: 11 } } })
 	})
-	test.each([[{}], [null], [[]]])('empty/odd upstream %j → { hour: null, stations: {} }', async (body) => {
+	test.each([[{}], [null], [[]]])('empty/odd upstream %j → { hour: null, stations: {}, today: {} }', async (body) => {
 		upstream = body
-		expect(await (await call(observations)).json()).toEqual({ hour: null, stations: {} })
+		expect(await (await call(observations)).json()).toEqual({ hour: null, stations: {}, today: {} })
+	})
+})
+
+// #48: "since 00:00" per station, computed from the same 24 h upstream.
+describe('/api/observations today', () => {
+	const obs = {
+		'2026-11-10T23:00': { 1: { temperatura: 20, intensidadeVentoKM: 80, precAcumulada: 5 }, 9: { temperatura: 3 } },
+		'2026-11-11T00:00': { 1: { temperatura: 9, intensidadeVentoKM: 10, precAcumulada: 2 }, 9: { temperatura: -1 } },
+		'2026-11-11T01:00': { 1: { temperatura: 8, intensidadeVentoKM: 30, precAcumulada: 1 }, 9: { temperatura: 4, precAcumulada: 2 } },
+		'2026-11-11T02:00': { 1: { temperatura: 7, intensidadeVentoKM: -99, precAcumulada: 0.5 }, 9: { temperatura: 5, precAcumulada: 1 } },
+	}
+	// Station 9 is in the Açores (catalog coordinates): its day starts at 01:00 UTC.
+	const catalog = [
+		{ type: 'Feature', properties: { idEstacao: 1, localEstacao: 'Lisboa' }, geometry: { type: 'Point', coordinates: [-9.15, 38.72] } },
+		{ type: 'Feature', properties: { idEstacao: 9, localEstacao: 'Ponta Delgada' }, geometry: { type: 'Point', coordinates: [-25.67, 37.74] } },
+	]
+	const route = (catalogOk = true) =>
+		fetchMock.mockImplementation(async (url) => {
+			if (String(url).includes('/v2/weather/stations/ipma')) return catalogOk ? new Response(JSON.stringify(catalog)) : new Response('x', { status: 500 })
+			return new Response(JSON.stringify(obs))
+		})
+
+	test('per station, in its own time zone; stations unchanged', async () => {
+		route()
+		const body = await (await call(observations)).json()
+		expect(body.stations).toEqual(obs['2026-11-11T02:00'])
+		expect(body.today['1']).toEqual({ tmax: 9, tmin: 7, tMissing: 0, windMax: 30, wMissing: 1, rain: 1.5, rMissing: 0 })
+		// Açores: 00:00 UTC (−1 °C) is still yesterday; rain from 02:00 UTC.
+		expect(body.today['9']).toMatchObject({ tmax: 5, tmin: 4, rain: 1, rMissing: 0 })
+	})
+	test('catalog unavailable → still answers (Lisbon time for unknown stations)', async () => {
+		route(false)
+		const res = await call(observations)
+		expect(res.status).toBe(200)
+		const body = await res.json()
+		expect(body.today['9']).toMatchObject({ tmin: -1 }) // counted from Lisbon midnight
+		expect(body.today['1']).toMatchObject({ tmax: 9 })
 	})
 })
 

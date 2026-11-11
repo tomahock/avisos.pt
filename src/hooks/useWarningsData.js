@@ -14,6 +14,8 @@ export function useWarningsData() {
 	const [stationsStatus, setStationsStatus] = useState('loading')
 	const [obs, setObs] = useState({})
 	const [obsHour, setObsHour] = useState(null)
+	// Since-00:00 aggregates per station (#48), from /api/observations.
+	const [today, setToday] = useState({})
 	const [error, setError] = useState(null)
 	const [updatedAt, setUpdatedAt] = useState(null)
 	const [reloadKey, setReloadKey] = useState(0)
@@ -41,6 +43,7 @@ export function useWarningsData() {
 			.then((data) => {
 				setObs(data?.stations ?? {})
 				setObsHour(data?.hour ?? null)
+				setToday(data?.today ?? {})
 			})
 			.catch(() => {})
 		return () => ctrl.abort()
@@ -52,5 +55,5 @@ export function useWarningsData() {
 		setReloadKey((k) => k + 1)
 	}, [])
 
-	return { warnings, stations, stationsStatus, obs, obsHour, error, updatedAt, retry }
+	return { warnings, stations, stationsStatus, obs, obsHour, today, error, updatedAt, retry }
 }
