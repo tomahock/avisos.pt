@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 
 import { useWidth } from '../../hooks/useWidth.js'
+import { extent, outOfScaleText, reachedText, thresholdDomain, thresholdLines } from '../../utils/chartThresholds.js'
 import { rainTotal } from '../../utils/stationMetrics.js'
 
 // Small-multiple chart for one measure of one station (one series → no
@@ -10,11 +11,18 @@ import { rainTotal } from '../../utils/stationMetrics.js'
 //   bar   — precipitation, from a zero baseline
 //   range — daily min→max floating bars
 // `hoverIdx`/`onHover` are lifted so sibling charts share one crosshair.
+// `thresholds` = IPMA warning criteria drawn as dashed lines in the level
+// colours (dotted for reference-only criteria such as wind gusts), scaled by
+// the rule in utils/chartThresholds.js. `overlay` = a second, derived series
+// (the 6 h rolling rain sum) drawn as a dashed neutral line over the bars.
 
 const COLOR = 'var(--chart-line)' // themed in index.css (indigo-600 light, indigo-400 dark)
 const GRID = 'var(--chart-grid)'
 const INK = 'var(--chart-ink)'
 const PAD = { top: 10, right: 12, bottom: 22, left: 40 }
+// Literal per level (themed in index.css: darker yellow on light backgrounds).
+const WARN = { yellow: 'var(--chart-warn-yellow)', orange: 'var(--chart-warn-orange)', red: 'var(--chart-warn-red)' }
+const OVERLAY = 'var(--chart-overlay)'
 const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500]
 
 function niceTicks(lo, hi, max = 4) {
@@ -59,6 +67,11 @@ export default function StationChart({
 	gapUnit = 'h',
 	hoverIdx = null,
 	onHover = () => {},
+	thresholds = [],
+	// { values: [number|null per point], label: '6 h', format }
+	overlay = null,
+	// Fixed note under the chart (e.g. why the gust lines are a reference).
+	note = null,
 }) {
 	const [ref, width] = useWidth()
 	// Tooltip is positioned from its real width so it never leaves the chart
@@ -78,6 +91,7 @@ export default function StationChart({
 			values.push(p.v)
 		}
 	}
+	for (const v of overlay?.values ?? []) if (v != null) values.push(v)
 	const hasData = values.length > 0
 	let lo = hasData ? Math.min(...values) : 0
 	let hi = hasData ? Math.max(...values) : 1
@@ -85,9 +99,17 @@ export default function StationChart({
 		lo = 0
 		hi = Math.max(hi, 1)
 	}
-	const ticks = niceTicks(lo, hi)
+	const fit = hasData ? thresholdDomain(lo, hi, thresholds) : { lo, hi, included: new Set(), outOfScale: [] }
+	const ticks = niceTicks(fit.lo, fit.hi)
 	const yMin = ticks[0]
 	const yMax = ticks.at(-1)
+	const lines = thresholdLines(thresholds, fit.included, yMin, yMax, {
+		main: extent(points.map((p) => p.v)),
+		overlay: extent(overlay?.values),
+		hi: extent(points.map((p) => p.hi)),
+		lo: extent(points.map((p) => p.lo)),
+	})
+	const outOfScale = hasData ? outOfScaleText(fit.outOfScale) : ''
 	const y = (v) => PAD.top + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH
 
 	const slot = n > 0 ? plotW / n : plotW
@@ -108,6 +130,27 @@ export default function StationChart({
 		})
 	}
 
+	// Overlay line (6 h sum), broken where the window isn't complete.
+	let overlayPath = ''
+	if (overlay) {
+		let pen = false
+		overlay.values.forEach((v, i) => {
+			if (v == null) {
+				pen = false
+				return
+			}
+			overlayPath += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`
+			pen = true
+		})
+	}
+
+	// Line labels at the right edge; skip one that would overlap the previous.
+	const labelled = []
+	for (const l of [...lines].sort((a, b) => y(a.value) - y(b.value))) {
+		const ly = y(l.value)
+		if (labelled.every((o) => Math.abs(o.ly - ly) >= 11)) labelled.push({ ...l, ly })
+	}
+
 	function pick(e) {
 		if (!n) return
 		const rect = e.currentTarget.getBoundingClientRect()
@@ -124,6 +167,16 @@ export default function StationChart({
 			: hovered.v != null
 				? format(hovered.v)
 				: 'Sem leitura'
+		: null
+
+	const overlayValue = hovered && overlay ? overlay.values[hoverIdx] : null
+	const hoveredExtra = hovered
+		? [
+				overlay ? `${overlay.label}: ${overlayValue != null ? overlay.format(overlayValue) : 'sem dados'}` : null,
+				reachedText(thresholds, { main: hovered.v, overlay: overlayValue, hi: hovered.hi, lo: hovered.lo }),
+			]
+				.filter(Boolean)
+				.join(' · ')
 		: null
 
 	// X labels: provided by caller (e.g. every 6 h / day starts).
@@ -190,6 +243,37 @@ export default function StationChart({
 						</text>
 					))}
 
+					{lines.map((l) => (
+						<line
+							key={l.key}
+							data-threshold={l.level}
+							data-reference={l.reference || undefined}
+							x1={PAD.left}
+							x2={width - PAD.right}
+							y1={y(l.value)}
+							y2={y(l.value)}
+							style={{ stroke: WARN[l.level] }}
+							strokeWidth="1.5"
+							strokeDasharray={l.reference ? '2 4' : '6 4'}
+						>
+							<title>{l.title}</title>
+						</line>
+					))}
+					{labelled.map((l) => (
+						<text
+							key={l.key}
+							x={width - PAD.right - 2}
+							y={l.ly - 3}
+							textAnchor="end"
+							fontSize="10"
+							fontWeight="600"
+							style={{ fill: WARN[l.level], paintOrder: 'stroke', stroke: 'rgb(var(--surface))', strokeWidth: 3 }}
+							className="tabular-nums"
+						>
+							{l.label}
+						</text>
+					))}
+
 					{kind === 'line' && <path d={path} fill="none" style={{ stroke: COLOR }} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />}
 					{kind === 'bar' &&
 						points.map((p, i) =>
@@ -203,6 +287,10 @@ export default function StationChart({
 								<path key={i} d={barPath(x(i) - barW / 2, y(p.hi), barW, Math.max(2, y(p.lo) - y(p.hi)), 4, true)} style={{ fill: COLOR }} opacity={hoverIdx === i ? 0.75 : 1} />
 							) : null
 						)}
+
+					{overlayPath && (
+						<path d={overlayPath} data-overlay fill="none" style={{ stroke: OVERLAY }} strokeWidth="2" strokeDasharray="5 3" strokeLinejoin="round" />
+					)}
 
 					{hovered && (
 						<g pointerEvents="none">
@@ -225,7 +313,7 @@ export default function StationChart({
 				{hovered && (
 					<div
 						ref={tipRef}
-						className="pointer-events-none absolute top-0 rounded-md bg-surface/95 border border-gray-200 shadow-sm px-2 py-1 text-xs"
+						className="pointer-events-none absolute top-0 w-max rounded-md bg-surface/95 border border-gray-200 shadow-sm px-2 py-1 text-xs"
 						style={{
 							left: Math.min(Math.max(x(hoverIdx) - tipW / 2, 0), Math.max(0, width - tipW)),
 							maxWidth: width,
@@ -234,10 +322,18 @@ export default function StationChart({
 						}}
 					>
 						<span className="font-semibold text-gray-900 tabular-nums">{hoveredText}</span>
+						{hoveredExtra && <span className="text-gray-700 tabular-nums"> · {hoveredExtra}</span>}
 						<span className="text-gray-500"> · {formatTime(hovered.t)}</span>
 					</div>
 				)}
 			</div>
+			{(outOfScale || note) && (
+				<p className="m-0 mt-1 text-[11px] leading-snug text-gray-500">
+					{outOfScale && <span data-out-of-scale>{outOfScale}.</span>}
+					{outOfScale && note && ' '}
+					{note}
+				</p>
+			)}
 		</figure>
 	)
 }
