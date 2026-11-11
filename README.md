@@ -3,9 +3,10 @@
 Site com os avisos meteorológicos do IPMA em vigor em Portugal — **<https://avisos.pt>**.
 
 - **Avisos** por distrito/região, com página e link próprios para cada distrito e cada aviso
+- **Ocorrências de proteção civil** por tempo adverso: da ANEPC nos distritos do continente e, na Madeira, do SRPC, IP-RAM (ocorrências das últimas 24 h e o evento em curso: números, estradas cortadas, comunicados, recomendações)
 - **Cronologia** hora a hora dos avisos
 - **Histórico** das alterações aos avisos: emitidos, agravados, desagravados, prolongados, retirados e terminados (desde 11/11/2026)
-- **Mapa** com os avisos de agora e dos próximos dias, ícones por tipo e estações meteorológicas
+- **Mapa** com os avisos de agora e dos próximos dias, ícones por tipo, estações meteorológicas e, na Madeira, as ocorrências por freguesia
 - **Estações meteorológicas** do IPMA: leitura atual, gráficos hora a hora e diários, rankings
 - **Critérios** de emissão de avisos do IPMA
 
@@ -52,6 +53,7 @@ Ideias, correções e melhorias são muito bem-vindas — não é preciso progra
 
 - **Avisos meteorológicos e observações das estações**: [IPMA — Instituto Português do Mar e da Atmosfera](https://www.ipma.pt), através da [API do Fogos.pt](https://fogos.pt/pt/api) ([código](https://github.com/FogosPT/fogosapi))
 - **Ocorrências de proteção civil** (fenómenos meteorológicos adversos): [ANEPC](https://www.prociv.gov.pt), através da [API do Fogos.pt](https://fogos.pt/pt/api)
+- **Ocorrências e eventos de proteção civil na Madeira**: [SRPC, IP-RAM](https://www.procivmadeira.pt), através da [API do Fogos.pt](https://fogos.pt/pt/api); localização aproximada pelo centroide da freguesia (CAOP, [DGT](https://www.dgterritorio.gov.pt), calculado pelo Fogos.pt)
 - **Limites dos concelhos**: [FrancisPais/geojson-portugal-continental](https://github.com/FrancisPais/geojson-portugal-continental) e [FrancisPais/geojson-portugal-arquipelagos](https://github.com/FrancisPais/geojson-portugal-arquipelagos)
 - **Mapa base**: © contribuidores do [OpenStreetMap](https://www.openstreetmap.org/copyright)
 - **Ícones**: [Font Awesome Free](https://fontawesome.com) · **Tipo de letra**: Fira Sans

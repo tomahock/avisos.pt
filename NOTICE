@@ -34,6 +34,13 @@ Dados apresentados no site (não fazem parte do repositório)
     Ocorrências de proteção civil por fenómenos meteorológicos adversos:
     Autoridade Nacional de Emergência e Proteção Civil (ANEPC), também através
     da API do Fogos.pt. Seguem os termos da ANEPC.
+    Ocorrências e eventos de proteção civil na Região Autónoma da Madeira:
+    Serviço Regional de Proteção Civil, IP-RAM (SRPC, IP-RAM) —
+    https://www.procivmadeira.pt — através da API do Fogos.pt. Seguem os
+    termos do SRPC, IP-RAM. A localização dessas ocorrências é aproximada: o
+    centroide da freguesia, calculado pelo Fogos.pt a partir da Carta
+    Administrativa Oficial de Portugal (CAOP) da Direção-Geral do Território
+    (DGT) — https://www.dgterritorio.gov.pt
 
 public/data/pt-continental.geojson
 public/data/pt-arquipelagos.geojson
