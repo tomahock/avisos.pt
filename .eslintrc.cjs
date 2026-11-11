@@ -21,6 +21,8 @@ module.exports = {
 		{
 			files: ['scripts/**', 'tests/**', 'e2e/**', '*.config.js', '.eslintrc.cjs'],
 			env: { node: true },
+			// Fast refresh is a dev-server concern of the app, not of test helpers.
+			rules: { 'react-refresh/only-export-components': 'off' },
 		},
 	],
 	rules: {
