@@ -31,7 +31,9 @@ npm run dev:cf    # wrangler + Vite — /api/*, meta tags e imagens funcionam (l
 npm run build     # gera ./dist
 npm run preview   # serve ./dist
 npm run lint
-npm test          # testes dos utils (node --test)
+npm test          # testes unitários, de componentes e das functions (Vitest)
+npm run test:e2e  # testes no browser (Playwright) — depois de npm run build
+npm run test:all  # tudo o que corre na CI
 node scripts/build-stations.mjs   # regenera estação → distrito e o sitemap das estações
 ```
 

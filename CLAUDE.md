@@ -28,9 +28,19 @@ npm run dev      # Vite dev server on http://localhost:3000 — /api/* WILL NOT 
 npm run dev:cf   # wrangler pages dev + vite; /api/* works, reads .dev.vars
 npm run build    # outputs to ./dist
 npm run preview  # serve ./dist locally
-npm run lint
-npm test         # node --test on src/**/*.test.js (pure utils, TZ=Europe/Lisbon)
+npm run lint     # .js/.jsx/.mjs in src, functions, scripts, tests, e2e — --max-warnings 0
+npm test         # Vitest: unit + components + functions (TZ=Europe/Lisbon)
+npm run test:e2e # Playwright — needs `npm run build` first
+npm run test:all # lint + test + build + e2e (what CI runs)
+npm run mock:fogos # fake FogosPT on :8799 (FOGOS_API_BASE=http://127.0.0.1:8799)
 ```
+
+## Tests (CI: `.github/workflows/test.yml`, every PR and push to `main`)
+
+- **Unit** (`src/**/*.test.js`, `tests/functions/*.test.js`, Vitest `node`): every util/data module, `_fogos.js` and each `/api/*` handler called directly with a stubbed `fetch`. `src/data/data.test.js` pins **URL contracts** (the 25 district slugs) and data integrity (every GeoJSON concelho → an area, every station → a valid area).
+- **Pages/components** (`tests/pages/*.test.jsx`, `*.test.jsx`, Vitest `jsdom`): `renderRoute(path)` (`tests/helpers/render.jsx`) renders the real route table (`src/routes.jsx`, shared with `main.jsx`); `mockApi()` (`tests/helpers/api.js`) stubs `fetch` so `/api/*` goes through the **real Pages Functions**, which call a fake FogosPT serving `tests/fixtures/data.js` (`makeFixtures(now)` — times relative to `now`, includes odd data: a station reporting only `-99`, one without geometry, a missing hour). `overrides` simulate a failing (`502`) or empty endpoint.
+- **E2E** (`e2e/*.spec.js`, Playwright Chromium): `wrangler pages dev dist` (real middleware, functions, OG) + `tests/mock-fogos/server.mjs` (same fixtures). Projects `desktop`, `mobile` (Pixel 7) and `dark` — the last two only run tests tagged `@responsive`. Error/empty states use `page.route` in the browser (the functions' Cache API would serve stale data otherwise); each run starts wrangler with a fresh `--persist-to .wrangler/e2e`. `og.spec.js` is the only test allowed to reach the internet (fonts from jsDelivr) and retries.
+- Rules: time is fixed (`vi.setSystemTime`) whenever an assertion depends on it; E2E never asserts on the time of day. A bug found by a test is fixed with that test failing first; a debatable one stays as `it.fails`/`test.fail` with a comment.
 
 `/api/*` endpoints only work under `npm run dev:cf` (or in deployed CF Pages). Plain `npm run dev` gets a 200 on `/api/warnings` returning `index.html` (SPA fallback), which then fails to parse as JSON — expected, not a bug.
 

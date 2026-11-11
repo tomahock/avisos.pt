@@ -26,11 +26,10 @@ O Avisos.pt é código aberto e mantido por voluntários. Toda a ajuda conta: c�
 4. Antes de abrir o PR:
 
    ```bash
-   npm run lint
-   npm run build
+   npm run test:all   # lint + testes + build + testes no browser (o mesmo que a CI)
    ```
 
-   e confirma no browser que as páginas que mexeste funcionam (incluindo em largura de telemóvel).
+   (da primeira vez: `npx playwright install chromium`). Se corrigires um bug, escreve primeiro o teste que o mostra. Confirma também no browser que as páginas que mexeste funcionam (incluindo em largura de telemóvel).
 
 5. Abre um Pull Request para `main` com:
    - o que muda e porquê;
