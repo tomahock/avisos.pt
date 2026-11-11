@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 const LINKS = [
 	{ to: '/', label: 'Avisos', end: true },
 	{ to: '/cronologia', label: 'Cronologia' },
+	{ to: '/historico', label: 'Histórico' },
 	{ to: '/mapa', label: 'Mapa' },
 	{ to: '/estacoes', label: 'Estações' },
 	{ to: '/criterios', label: 'Critérios' },

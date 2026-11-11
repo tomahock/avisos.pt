@@ -11,6 +11,7 @@ import NotFound from './components/layout/NotFound.jsx'
 const MapPage = lazy(() => import('./pages/mapa.jsx'))
 const CronologiaPage = lazy(() => import('./pages/cronologia.jsx'))
 const CriteriosPage = lazy(() => import('./pages/criterios.jsx'))
+const HistoricoPage = lazy(() => import('./pages/historico.jsx'))
 const DistritoPage = lazy(() => import('./pages/distrito.jsx'))
 const AvisoPage = lazy(() => import('./pages/aviso.jsx'))
 const EstacoesPage = lazy(() => import('./pages/estacoes.jsx'))
@@ -34,6 +35,14 @@ createRoot(document.getElementById('root')).render(
 					element={
 						<Suspense fallback={<div />}>
 							<CronologiaPage />
+						</Suspense>
+					}
+				/>
+				<Route
+					path="/historico"
+					element={
+						<Suspense fallback={<div />}>
+							<HistoricoPage />
 						</Suspense>
 					}
 				/>

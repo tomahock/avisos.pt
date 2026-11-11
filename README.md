@@ -4,6 +4,7 @@ Site com os avisos meteorológicos do IPMA em vigor em Portugal — **<https://a
 
 - **Avisos** por distrito/região, com página e link próprios para cada distrito e cada aviso
 - **Cronologia** hora a hora dos avisos
+- **Histórico** das alterações aos avisos: emitidos, agravados, desagravados, prolongados, retirados e terminados (desde 11/11/2026)
 - **Mapa** com os avisos de agora e dos próximos dias, ícones por tipo e estações meteorológicas
 - **Estações meteorológicas** do IPMA: leitura atual, gráficos hora a hora e diários, rankings
 - **Critérios** de emissão de avisos do IPMA
@@ -30,6 +31,7 @@ npm run dev:cf    # wrangler + Vite — /api/*, meta tags e imagens funcionam (l
 npm run build     # gera ./dist
 npm run preview   # serve ./dist
 npm run lint
+npm test          # testes dos utils (node --test)
 node scripts/build-stations.mjs   # regenera estação → distrito e o sitemap das estações
 ```
 

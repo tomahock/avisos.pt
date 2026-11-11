@@ -38,6 +38,11 @@ export const PAGE_META = {
 		description:
 			'Todas as estações meteorológicas do IPMA em Portugal com a última leitura: onde está mais quente, mais frio, mais vento e mais chuva agora, por distrito.',
 	},
+	'/historico': {
+		title: 'Histórico de avisos meteorológicos — agravamentos e desagravamentos',
+		description:
+			'Cronologia das alterações aos avisos do IPMA em Portugal: avisos emitidos, agravados, desagravados, prolongados, retirados e terminados, por região e tipo.',
+	},
 	'/criterios': {
 		title: 'Critérios de emissão de avisos meteorológicos do IPMA',
 		description:
