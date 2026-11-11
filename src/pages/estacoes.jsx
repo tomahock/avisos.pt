@@ -109,7 +109,8 @@ function SortIcon({ active, dir }) {
 }
 
 // Wider screens: a table; the name column stays put when the table scrolls
-// sideways. Stacking: header corner (z-20, opaque) above the body name cells
+// sideways. Tighter cell padding below 1280 px so it fits at 1024 px with any
+// font metrics (CI's Linux fonts overflowed by 1 px with px-3). Stacking: header corner (z-20, opaque) above the body name cells
 // (z-10) so a name can never paint over the header (#46).
 function StationTable({ rows, sortKey, sortDir, onSort }) {
 	const ariaSort = (key) => (sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none')
@@ -118,15 +119,15 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 			<table className="w-full text-sm tabular-nums">
 				<thead className="bg-gray-50 text-xs text-gray-500">
 					<tr>
-						<th className="sticky left-0 z-20 bg-gray-50 text-left font-semibold px-3 py-2" aria-sort={ariaSort('nome')}>
+						<th className="sticky left-0 z-20 bg-gray-50 text-left font-semibold px-2 xl:px-3 py-2" aria-sort={ariaSort('nome')}>
 							<button type="button" onClick={() => onSort('nome')} className={`inline-flex items-center gap-1 ${sortKey === 'nome' ? 'text-gray-900' : 'hover:text-gray-900'}`}>
 								Estação
 								<SortIcon active={sortKey === 'nome'} dir={sortDir} />
 							</button>
 						</th>
-						<th className="hidden xl:table-cell text-left font-semibold px-3 py-2">Distrito / região</th>
+						<th className="hidden xl:table-cell text-left font-semibold px-2 xl:px-3 py-2">Distrito / região</th>
 						{COLUMNS.map((c) => (
-							<th key={c.key} className="text-right font-semibold px-3 py-2 whitespace-nowrap" aria-sort={ariaSort(c.key)} title={c.title}>
+							<th key={c.key} className="text-right font-semibold px-2 xl:px-3 py-2 whitespace-nowrap" aria-sort={ariaSort(c.key)} title={c.title}>
 								<button type="button" onClick={() => onSort(c.key)} className={`inline-flex items-center gap-1 ${sortKey === c.key ? 'text-gray-900' : 'hover:text-gray-900'}`}>
 									{c.label}
 									<SortIcon active={sortKey === c.key} dir={sortDir} />
@@ -138,7 +139,7 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 				<tbody>
 					{rows.map((r) => (
 						<tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
-							<td className="sticky left-0 z-10 bg-surface px-3 py-1.5 font-medium">
+							<td className="sticky left-0 z-10 bg-surface px-2 xl:px-3 py-1.5 font-medium">
 								<Link to={stationPath(r.id, r.name)} className="block text-gray-900 no-underline hover:underline leading-tight">
 									{r.name}
 								</Link>
@@ -149,7 +150,7 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 									</span>
 								)}
 							</td>
-							<td className="hidden xl:table-cell px-3 py-1.5 text-gray-600 whitespace-nowrap">
+							<td className="hidden xl:table-cell px-2 xl:px-3 py-1.5 text-gray-600 whitespace-nowrap">
 								{r.area ? (
 									<Link to={districtPath(r.area)} className="text-gray-600 no-underline hover:underline">
 										{IPMA_AREAS[r.area]?.name}
@@ -159,7 +160,7 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 								)}
 							</td>
 							{COLUMNS.map((c) => (
-								<td key={c.key} className={`px-3 py-1.5 text-right whitespace-nowrap ${sortKey === c.key ? 'text-gray-900 font-semibold' : 'text-gray-700'}`}>
+								<td key={c.key} className={`px-2 xl:px-3 py-1.5 text-right whitespace-nowrap ${sortKey === c.key ? 'text-gray-900 font-semibold' : 'text-gray-700'}`}>
 									{cellValue(c, r)}
 								</td>
 							))}
