@@ -22,12 +22,22 @@ const REGIONS = [
 // name ('nome', A→Z) is the default sort and isn't written in the URL.
 const DEFAULT_SORT = 'nome'
 const NAME_SORT = { key: 'nome', label: 'Estação', dir: 'asc' }
+// `get(row)` → number|null (sorting and display); `partial(row)` → hours of
+// today without a reading (the value is then a bound: ≥ for max/total, ≤ for
+// min). The "since 00:00" columns come from /api/observations `today` (#48).
+const latest = (key) => (r) => reading(r.obs, key)
+const today = (key) => (r) => r.today?.[key] ?? null
+const TODAY_NOTE = 'desde as 00h (hora local da estação)'
 const COLUMNS = [
-	{ key: 'temperatura', label: 'Temp.', fmt: fmtTemp, dir: 'desc' },
-	{ key: 'intensidadeVentoKM', label: 'Vento', fmt: fmtKmh, dir: 'desc' },
-	{ key: 'precAcumulada', label: 'Chuva 1 h', fmt: fmtMm, dir: 'desc' },
-	{ key: 'humidade', label: 'Humidade', fmt: fmtPct, dir: 'desc' },
-	{ key: 'pressao', label: 'Pressão', fmt: fmtHpa, dir: 'asc' },
+	{ key: 'temperatura', label: 'Temp.', fmt: fmtTemp, dir: 'desc', get: latest('temperatura') },
+	{ key: 'tmax', label: 'Máx.', fmt: fmtTemp, dir: 'desc', get: today('tmax'), partial: today('tMissing'), bound: '≥', title: `Temperatura máxima ${TODAY_NOTE}` },
+	{ key: 'tmin', label: 'Mín.', fmt: fmtTemp, dir: 'asc', get: today('tmin'), partial: today('tMissing'), bound: '≤', title: `Temperatura mínima ${TODAY_NOTE}` },
+	{ key: 'intensidadeVentoKM', label: 'Vento', fmt: fmtKmh, dir: 'desc', get: latest('intensidadeVentoKM') },
+	{ key: 'ventoMax', label: 'Vento máx.', fmt: fmtKmh, dir: 'desc', get: today('windMax'), partial: today('wMissing'), bound: '≥', title: 'Maior vento médio horário desde as 00h — o IPMA não publica a rajada em tempo real' },
+	{ key: 'precAcumulada', label: 'Chuva 1 h', fmt: fmtMm, dir: 'desc', get: latest('precAcumulada') },
+	{ key: 'chuvaHoje', label: 'Chuva desde 0h', fmt: fmtMm, dir: 'desc', get: today('rain'), partial: today('rMissing'), bound: '≥', title: `Chuva acumulada ${TODAY_NOTE}` },
+	{ key: 'humidade', label: 'Humidade', fmt: fmtPct, dir: 'desc', get: latest('humidade') },
+	{ key: 'pressao', label: 'Pressão', fmt: fmtHpa, dir: 'asc', get: latest('pressao') },
 ]
 
 // pt-PT collation, accents and case ignored ("Évora" between "Bragança" and "Funchal").
@@ -78,9 +88,17 @@ function WindValue({ obs }) {
 	)
 }
 
-function cellValue(c, obs) {
-	if (c.key === 'intensidadeVentoKM') return <WindValue obs={obs} />
-	return c.fmt(reading(obs, c.key)) ?? <span className="text-gray-300">—</span>
+function cellValue(c, r) {
+	if (c.key === 'intensidadeVentoKM') return <WindValue obs={r.obs} />
+	const v = c.get(r)
+	if (v == null) return <span className="text-gray-300">—</span>
+	const missing = c.partial?.(r) ?? 0
+	if (!missing) return c.fmt(v)
+	return (
+		<span title={`${missing} h sem leitura desde as 00h`}>
+			{c.bound} {c.fmt(v)}
+		</span>
+	)
 }
 
 function SortIcon({ active, dir }) {
@@ -105,7 +123,7 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 						</th>
 						<th className="text-left font-semibold px-3 py-2">Distrito / região</th>
 						{COLUMNS.map((c) => (
-							<th key={c.key} className="text-right font-semibold px-3 py-2" aria-sort={ariaSort(c.key)}>
+							<th key={c.key} className="text-right font-semibold px-3 py-2 whitespace-nowrap" aria-sort={ariaSort(c.key)} title={c.title}>
 								<button type="button" onClick={() => onSort(c.key)} className={`inline-flex items-center gap-1 ${sortKey === c.key ? 'text-gray-900' : 'hover:text-gray-900'}`}>
 									{c.label}
 									<SortIcon active={sortKey === c.key} dir={sortDir} />
@@ -133,7 +151,7 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 							</td>
 							{COLUMNS.map((c) => (
 								<td key={c.key} className={`px-3 py-1.5 text-right whitespace-nowrap ${sortKey === c.key ? 'text-gray-900 font-semibold' : 'text-gray-700'}`}>
-									{cellValue(c, r.obs)}
+									{cellValue(c, r)}
 								</td>
 							))}
 						</tr>
@@ -141,6 +159,20 @@ function StationTable({ rows, sortKey, sortDir, onSort }) {
 				</tbody>
 			</table>
 		</div>
+	)
+}
+
+// Phones: today's extremes under the district ("Hoje 8,0–16,0 °C · 3,2 mm").
+function TodayLine({ r }) {
+	const t = r.today
+	if (!t || (t.tmax == null && t.rain == null)) return null
+	const parts = []
+	if (t.tmax != null) parts.push(`${t.tMissing ? '≈ ' : ''}${fmtTemp(t.tmin)}–${fmtTemp(t.tmax)}`)
+	if (t.rain != null) parts.push(`${t.rMissing ? '≥ ' : ''}${fmtMm(t.rain)}`)
+	return (
+		<span data-today className="block text-[11px] leading-tight text-gray-500">
+			Hoje {parts.join(' · ')}
+		</span>
 	)
 }
 
@@ -188,16 +220,17 @@ function StationList({ rows, sortKey, sortDir, sorts, onSort }) {
 							<span className="min-w-0 flex-1">
 								<span data-station-name className="block text-sm font-medium leading-tight text-gray-900">{r.name}</span>
 								<span className="block text-[11px] leading-tight text-gray-500">{IPMA_AREAS[r.area]?.name ?? '—'}</span>
+								<TodayLine r={r} />
 							</span>
 							<span className="shrink-0 text-right">
 								<span data-primary className="block text-base font-semibold leading-tight text-gray-900 whitespace-nowrap">
-									{cellValue(primary, r.obs)}
+									{cellValue(primary, r)}
 								</span>
 								<span className="block text-[11px] leading-tight text-gray-500 whitespace-nowrap">
 									{secondary.map((c, i) => (
 										<span key={c.key}>
 											{i > 0 && ' · '}
-											{cellValue(c, r.obs)}
+											{cellValue(c, r)}
 										</span>
 									))}
 								</span>
@@ -213,7 +246,7 @@ function StationList({ rows, sortKey, sortDir, sorts, onSort }) {
 export default function EstacoesPage() {
 	usePageTitle(`${PAGE_META['/estacoes'].title} · Avisos.pt`, { description: PAGE_META['/estacoes'].description })
 
-	const { stations, stationsStatus, obs, obsHour, warnings, updatedAt, retry } = useWarningsData()
+	const { stations, stationsStatus, obs, obsHour, today: todayById, warnings, updatedAt, retry } = useWarningsData()
 	const [params, setParams] = useSearchParams()
 	const region = params.get('regiao') ?? ''
 	const sorts = [NAME_SORT, ...COLUMNS]
@@ -237,7 +270,10 @@ export default function EstacoesPage() {
 		update({ ordem: key === DEFAULT_SORT ? '' : key, dir: d === col.dir ? '' : d })
 	}
 
-	const rows = useMemo(() => stationRows(stations, obs), [stations, obs])
+	const rows = useMemo(
+		() => stationRows(stations, obs).map((r) => ({ ...r, today: todayById?.[String(r.id)] ?? null })),
+		[stations, obs, todayById]
+	)
 	const inRegion = useMemo(
 		() => rows.filter((r) => !region || IPMA_AREAS[r.area]?.region === region),
 		[rows, region]
@@ -249,15 +285,16 @@ export default function EstacoesPage() {
 			: inRegion
 		const sign = sortDir === 'asc' ? 1 : -1
 		if (sortKey === 'nome') return [...list].sort((a, b) => byName(a, b) * sign)
+		const get = sortCol.get
 		return [...list].sort((a, b) => {
-			const va = reading(a.obs, sortKey)
-			const vb = reading(b.obs, sortKey)
+			const va = get(a)
+			const vb = get(b)
 			if (va == null && vb == null) return byName(a, b)
 			if (va == null) return 1 // no reading → always last
 			if (vb == null) return -1
 			return (va - vb) * sign || byName(a, b)
 		})
-	}, [inRegion, q, sortKey, sortDir])
+	}, [inRegion, q, sortKey, sortDir, sortCol])
 
 	if (stationsStatus === 'error') {
 		return (
@@ -325,7 +362,9 @@ export default function EstacoesPage() {
 				)}
 				{visible.length === 0 && <p className="px-3 py-6 text-center text-sm text-gray-500">Nenhuma estação corresponde à pesquisa.</p>}
 				<p className="mt-3 text-xs text-gray-500">
-					Fonte: IPMA, via API Fogos.pt. Vento = velocidade média na hora (não rajada). Ao ordenar por um valor, as estações sem leitura aparecem no fim.
+					Fonte: IPMA, via API Fogos.pt. Vento = velocidade média na hora (não rajada). «Máx.», «Mín.», «Vento máx.» e «Chuva desde 0h» contam desde as
+					00h (hora local da estação; nos Açores, hora dos Açores); com horas sem leitura o valor é um limite (≥ / ≤). «Vento máx.» é o maior vento médio
+					horário desde as 00h — o IPMA não publica a rajada em tempo real. Ao ordenar por um valor, as estações sem leitura aparecem no fim.
 				</p>
 			</div>
 		</Layout>
