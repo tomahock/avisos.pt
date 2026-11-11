@@ -109,13 +109,56 @@ describe('/estacoes', () => {
 		expect(rows).toHaveLength(1)
 		expect(rows[0]).toHaveTextContent('Bragança (Aeródromo)')
 	})
-	test('a station with -99 everywhere shows dashes and sorts last', async () => {
+	test('a station with -99 everywhere shows dashes and sorts last when sorting by a value', async () => {
 		mockApi()
-		renderRoute('/estacoes')
+		renderRoute('/estacoes?ordem=temperatura')
 		await screen.findByRole('heading', { level: 1 })
 		const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
 		expect(rows.at(-1)).toHaveTextContent('Évora (Aeródromo)')
 		expect(rows.at(-1)).not.toHaveTextContent('-99')
+	})
+})
+
+describe('/estacoes sorted by name (#46)', () => {
+	const names = () => within(screen.getByRole('table')).getAllByRole('row').slice(1).map((r) => r.querySelector('td a').textContent)
+	const byName = (list) => [...list].sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' }))
+	test('default: alphabetical by station name, accents/case ignored', async () => {
+		mockApi()
+		renderRoute('/estacoes')
+		await screen.findByRole('heading', { level: 1 })
+		await waitFor(() => expect(names().length).toBeGreaterThan(5))
+		expect(names()).toEqual(byName(names()))
+		// "Évora" between "Bragança" and "Funchal", not after "Z".
+		expect(names().indexOf('Évora (Aeródromo)')).toBeLessThan(names().indexOf('Funchal (Teste)'))
+		expect(within(screen.getByRole('table')).getByRole('columnheader', { name: /Estação/ })).toHaveAttribute('aria-sort', 'ascending')
+	})
+	test('?ordem=nome is the default (canonical: no param); the header toggles Z→A', async () => {
+		mockApi()
+		const { user, currentUrl } = renderRoute('/estacoes?ordem=nome')
+		await screen.findByRole('heading', { level: 1 })
+		await user.click(screen.getByRole('button', { name: /^Estação/ }))
+		expect(currentUrl()).toBe('/estacoes?dir=desc')
+		await waitFor(() => expect(names()).toEqual(byName(names()).reverse()))
+		await user.click(screen.getByRole('button', { name: /^Estação/ }))
+		expect(currentUrl()).toBe('/estacoes')
+	})
+	test('a highlight tile and the top row agree on ties (same tie-break by name)', async () => {
+		const fx = makeFixtures(new Date())
+		// Two stations with the same strongest wind, catalog order ≠ name order.
+		const hour = Object.keys(fx.observations).sort().at(-1)
+		fx.observations[hour]['1200541'].intensidadeVentoKM = 90 // Sines
+		fx.observations[hour]['1200576'].intensidadeVentoKM = 90 // Bragança (Aeródromo)
+		mockApi({ fx })
+		renderRoute('/estacoes?ordem=intensidadeVentoKM')
+		const tile = (await screen.findByText('Vento mais forte')).closest('a')
+		await waitFor(() => expect(names()[0]).toBe('Bragança (Aeródromo)'))
+		expect(tile).toHaveTextContent('Bragança (Aeródromo)')
+	})
+	test('old ?ordem=temperatura links keep working', async () => {
+		mockApi()
+		renderRoute('/estacoes?ordem=temperatura')
+		await screen.findByRole('heading', { level: 1 })
+		await waitFor(() => expect(within(screen.getByRole('table')).getByRole('columnheader', { name: /Temp\./ })).toHaveAttribute('aria-sort', 'descending'))
 	})
 })
 
