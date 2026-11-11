@@ -273,6 +273,8 @@ export default function WarningsMap({
 	showLegend = true,
 	stationsChecked = false,
 	emptyText = 'Sem avisos em vigor.',
+	// Extra <LayersControl.Overlay> entries for this map (e.g. Madeira's SRPC occurrences).
+	overlays = null,
 }) {
 	const warningsByCode = useMemo(() => {
 		const map = new Map()
@@ -338,6 +340,7 @@ export default function WarningsMap({
 							))}
 						</LayerGroup>
 					</LayersControl.Overlay>
+					{overlays}
 				</LayersControl>
 			</MapContainer>
 			{showLegend && <MapLegend />}

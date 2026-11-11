@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { LayerGroup, LayersControl } from 'react-leaflet'
 import { useSearchParams } from 'react-router-dom'
 
 import Layout from '../layouts/index.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
 import MapPeriodPicker from '../components/map/MapPeriodPicker.jsx'
+import MadeiraOccurrencesLayer from '../components/map/MadeiraOccurrencesLayer.jsx'
 import WarningsMap from '../components/map/WarningsMap.jsx'
 import { fetchJson } from '../utils/fetchJson.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { PAGE_META } from '../utils/share.js'
 import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
+import { occurrenceWindow, occurrencesBetween, parishGroups, totalCount } from '../utils/madeira.js'
 import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
 
 const REGIONS = [
@@ -60,6 +63,7 @@ export default function MapPage() {
 	const warnings = useActiveWarnings(rawWarnings)
 	const [stations, setStations] = useState([])
 	const [obs, setObs] = useState({})
+	const [occurrences, setOccurrences] = useState(null)
 	const [geoContinental, setGeoContinental] = useState(null)
 	const [geoArquipelagos, setGeoArquipelagos] = useState(null)
 	const [error, setError] = useState(null)
@@ -100,6 +104,11 @@ export default function MapPage() {
 			.then((data) => setObs(data?.stations ?? {}))
 			.catch(() => {})
 
+		// SRPC, IP-RAM occurrences (Madeira) — optional layer, never blocks.
+		fetchJson('/api/madeira/occurrences', ctrl.signal)
+			.then((data) => setOccurrences(Array.isArray(data) ? data : []))
+			.catch(() => {})
+
 		return () => ctrl.abort()
 	}, [reloadKey])
 
@@ -123,6 +132,13 @@ export default function MapPage() {
 		[warnings, period]
 	)
 	const isNow = period.key === 'agora'
+	// Occurrences are past events: "Agora" = last 24 h, today = since
+	// midnight, future days = none (the layer stays, empty, with a note).
+	const occWindow = useMemo(() => occurrenceWindow(period, now), [period, now])
+	const periodOccurrences = useMemo(
+		() => (occurrences && occWindow ? occurrencesBetween(occurrences, occWindow.from, occWindow.to) : []),
+		[occurrences, occWindow]
+	)
 	const emptyText = isNow ? 'Sem avisos em vigor.' : 'Sem avisos neste período.'
 
 	const regionData = useMemo(() => {
@@ -217,11 +233,40 @@ export default function MapPage() {
 						zoom={madeira.zoom}
 						bounds={madeira.bounds}
 						height={madeira.heightClass}
+						overlays={
+							occurrences && (
+								<LayersControl.Overlay checked name="Ocorrências SRPC-RAM">
+									<LayerGroup>
+										<MadeiraOccurrencesLayer occurrences={periodOccurrences} windowLabel={occWindow?.label ?? ''} />
+									</LayerGroup>
+								</LayersControl.Overlay>
+							)
+						}
 					/>
+					{occurrences && (
+						<p className="m-0 border-t border-gray-200 bg-surface px-3 py-2 text-xs text-gray-500" data-testid="madeira-occurrences-note">
+							{occurrencesNote(periodOccurrences, occWindow)}
+						</p>
+					)}
 				</RegionCard>
 			</div>
 		</Layout>
 	)
+}
+
+const SRPC = 'da Proteção Civil da Madeira (SRPC, IP-RAM)'
+
+function occurrencesNote(list, win) {
+	if (!win) return `As ocorrências ${SRPC} são acontecimentos passados: não aparecem nos dias seguintes.`
+	const total = totalCount(list)
+	if (total === 0) return `Sem ocorrências ${SRPC} ${win.label}.`
+	const mapped = totalCount(parishGroups(list).flatMap((g) => g.occurrences))
+	const missing = total - mapped
+	return [
+		`${total} ${total === 1 ? 'ocorrência' : 'ocorrências'} ${SRPC} ${win.label}`,
+		mapped > 0 ? `: uma bolha por freguesia, localização aproximada (centroide da freguesia).` : '.',
+		missing > 0 ? ` ${missing} sem localização não ${missing === 1 ? 'aparece' : 'aparecem'} no mapa.` : '',
+	].join('')
 }
 
 function RegionCard({ region, children }) {

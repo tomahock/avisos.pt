@@ -6,6 +6,7 @@ import {
 	areaChip,
 } from '../../data/ipmaAreas.js'
 import { levelMeta, worstLevelId } from '../../data/levels.js'
+import MadeiraEventBanner from './MadeiraEventBanner.jsx'
 
 function Chip({ code, warningsByArea }) {
 	const list = warningsByArea.get(code)
@@ -37,7 +38,7 @@ function Chip({ code, warningsByArea }) {
 	)
 }
 
-function Section({ title, codes, warningsByArea, cols }) {
+function Section({ title, codes, warningsByArea, cols, children }) {
 	return (
 		<div>
 			<h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
@@ -48,6 +49,7 @@ function Section({ title, codes, warningsByArea, cols }) {
 					<Chip key={code} code={code} warningsByArea={warningsByArea} />
 				))}
 			</div>
+			{children}
 		</div>
 	)
 }
@@ -72,7 +74,9 @@ export default function DistrictOverview({ warningsByArea }) {
 				codes={MADEIRA_CODES}
 				warningsByArea={warningsByArea}
 				cols="grid-cols-2 sm:grid-cols-4"
-			/>
+			>
+				<MadeiraEventBanner className="mt-2" />
+			</Section>
 		</section>
 	)
 }
