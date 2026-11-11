@@ -7,6 +7,7 @@ import {
 	LayersControl,
 	MapContainer,
 	Marker,
+	Pane,
 	Popup,
 	TileLayer,
 	Tooltip,
@@ -27,6 +28,7 @@ import {
 	formatWhen,
 	formatWind,
 } from '../../utils/format.js'
+import { seaBandStyle, seaWarningsByCode } from '../../utils/seaBands.js'
 import { districtPath } from '../../utils/share.js'
 import { stationPath } from '../../utils/stations.js'
 import { pointInBounds, stationInBounds } from './bounds.js'
@@ -116,6 +118,39 @@ function DistrictLayer({ geojson, warningsByCode, emptyText }) {
 	return (
 		<GeoJSON key={key} data={geojson} style={style} onEachFeature={onEachFeature} />
 	)
+}
+
+// --- Sea bands (Agitação Marítima) ----------------------------------------
+// The strip of sea along each area's coast (public/data/sea-bands.geojson),
+// filled with the area's worst sea-state level in the selected period. Own
+// pane below the overlay pane, so the land polygons stay on top.
+
+const SEA_PANE_Z = 390
+
+function SeaBandLayer({ bands, warnings, emptyText }) {
+	const sea = useMemo(() => seaWarningsByCode(warnings), [warnings])
+	const data = useMemo(
+		() => ({ type: 'FeatureCollection', features: (bands?.features ?? []).filter((f) => sea.has(f.properties?.code)) }),
+		[bands, sea]
+	)
+	const key = useMemo(() => {
+		const parts = [emptyText]
+		for (const [code, { level, warnings: list }] of sea) parts.push(`${code}:${level}:${list.map((w) => w.startTime).join(',')}`)
+		return parts.sort().join('|')
+	}, [sea, emptyText])
+	const style = useMemo(() => (feature) => seaBandStyle(sea.get(feature.properties.code)?.level), [sea])
+	const onEachFeature = useMemo(
+		() => (feature, layer) => {
+			const code = feature.properties.code
+			const entry = sea.get(code)
+			const name = IPMA_AREAS[code]?.name ?? code
+			layer.bindTooltip(`<strong>${esc(name)}</strong>: agitação marítima ${esc(levelMeta(entry?.level).label.toLowerCase())}`, { sticky: true })
+			layer.bindPopup(districtPopupHtml(`${name} — mar`, entry?.warnings, emptyText, code))
+		},
+		[sea, emptyText]
+	)
+	if (data.features.length === 0) return null
+	return <GeoJSON key={key} data={data} style={style} onEachFeature={onEachFeature} />
 }
 
 // --- Warning-type icons ---------------------------------------------------
@@ -275,6 +310,8 @@ export default function WarningsMap({
 	emptyText = 'Sem avisos em vigor.',
 	// Extra <LayersControl.Overlay> entries for this map (e.g. Madeira's SRPC occurrences).
 	overlays = null,
+	// Sea bands of this map's region (FeatureCollection with properties.code), or null.
+	seaBands = null,
 }) {
 	const warningsByCode = useMemo(() => {
 		const map = new Map()
@@ -310,6 +347,15 @@ export default function WarningsMap({
 					url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 				/>
 				<LayersControl position="topleft">
+					{seaBands && (
+						<LayersControl.Overlay checked name="Agitação marítima (mar)">
+							<LayerGroup>
+								<Pane name="sea-bands" style={{ zIndex: SEA_PANE_Z }}>
+									<SeaBandLayer bands={seaBands} warnings={warnings} emptyText={emptyText} />
+								</Pane>
+							</LayerGroup>
+						</LayersControl.Overlay>
+					)}
 					<LayersControl.Overlay checked name="Avisos por região">
 						<LayerGroup>
 							<DistrictLayer
