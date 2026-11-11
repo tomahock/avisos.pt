@@ -12,7 +12,7 @@ const WARN = { yellow: 'var(--chart-warn-yellow)', orange: 'var(--chart-warn-ora
 
 function describe(label, thresholds, fit) {
 	if (!thresholds?.length) return label
-	const out = outOfScaleText(fit.outOfScale)
+	const out = outOfScaleText(fit.outOfScale, fit.lo, fit.hi)
 	return [label, `Limiares: ${thresholdsSummary(thresholds)}`, out].filter(Boolean).join('. ')
 }
 
@@ -40,7 +40,7 @@ export default function Sparkline({ values, width = 96, height = 28, label, kind
 		const dataMax = Math.max(1, ...pts.map(([, v]) => v))
 		const fit = pts.length ? thresholdDomain(0, dataMax, thresholds) : { lo: 0, hi: dataMax, included: new Set(), outOfScale: [] }
 		const max = fit.hi
-		const lines = thresholdLines(thresholds, fit.included, 0, max, { main: extent(values) })
+		const lines = thresholdLines(thresholds, 0, max, { main: extent(values) })
 		const slot = (width - 2) / Math.max(1, values.length)
 		const w = Math.max(1, Math.min(4, slot - 1))
 		const y = (v) => height - 2 - (v / max) * (height - 4)
@@ -62,7 +62,7 @@ export default function Sparkline({ values, width = 96, height = 28, label, kind
 	const dataHi = Math.max(...pts.map(([, v]) => v))
 	const fit = thresholdDomain(dataLo, dataHi, thresholds)
 	const [lo, hi] = [fit.lo, fit.hi]
-	const lines = thresholdLines(thresholds, fit.included, lo, hi, { main: extent(values) })
+	const lines = thresholdLines(thresholds, lo, hi, { main: extent(values) })
 	const n = values.length - 1 || 1
 	const x = (i) => 2 + (i / n) * (width - 6)
 	const y = (v) => 3 + (hi === lo ? (height - 6) / 2 : (1 - (v - lo) / (hi - lo)) * (height - 6))

@@ -13,8 +13,12 @@
 // to its yellow threshold, the data still fill at least half of it — for a
 // chart from zero (rain, wind bars) that's "the data reach ≥ 50 % of the
 // yellow threshold". Otherwise the chart isn't squashed and the caption says
-// "limiar amarelo X, fora da escala". Orange/red are drawn only when they
-// fall inside the resulting scale.
+// "limiar amarelo X, fora da escala". The budget holds for the combined
+// domain: criteria are tried from the smallest stretch up, each checked
+// against the domain the previous ones already produced (heat and cold on
+// opposite ends can't both squash a temperature chart). Any level that falls
+// inside the resulting scale is drawn — also when its yellow didn't fit (a
+// heat wave at 38–40 °C still shows orange 38 and red 40).
 
 import { levelReached, levelWord, thresholdText } from './criteriaThresholds.js'
 
@@ -24,19 +28,28 @@ export const MIN_DATA_SHARE = 0.5
  * → { lo, hi, included: Set(set.key), outOfScale: [set] } for data spanning
  * [lo, hi] (pass the chart's own lo/hi, e.g. 0 for bars).
  */
-export function thresholdDomain(lo, hi, sets) {
+// `nice(lo, hi)` → [lo, hi] of the axis the chart would actually draw (its
+// tick rounding); the budget is checked on that axis. Default: none.
+export function thresholdDomain(lo, hi, sets, nice = (l, h) => [l, h]) {
 	const included = new Set()
 	const outOfScale = []
 	let newLo = lo
 	let newHi = hi
 	const span = hi - lo
-	for (const s of sets ?? []) {
-		const yellow = s.criterion?.levels?.[0]
-		if (!yellow) continue
-		const l = Math.min(lo, yellow.value)
-		const h = Math.max(hi, yellow.value)
-		const share = h - l > 0 ? span / (h - l) : 1
-		if (share >= MIN_DATA_SHARE) {
+	const stretch = (s) => {
+		const v = s.criterion?.levels?.[0]?.value
+		return v == null ? Infinity : Math.max(0, lo - v, v - hi)
+	}
+	const ordered = (sets ?? []).filter((s) => s.criterion?.levels?.[0]).sort((a, b) => stretch(a) - stretch(b))
+	for (const s of ordered) {
+		const yellow = s.criterion.levels[0]
+		const l = Math.min(newLo, yellow.value)
+		const h = Math.max(newHi, yellow.value)
+		// Inside the (already stretched) domain: nothing to stretch, accept.
+		const inside = l === newLo && h === newHi
+		const [al, ah] = nice(l, h)
+		const share = ah - al > 0 ? span / (ah - al) : 1
+		if (inside || share >= MIN_DATA_SHARE) {
 			included.add(s.key)
 			newLo = Math.min(newLo, l)
 			newHi = Math.max(newHi, h)
@@ -62,14 +75,14 @@ function levelsToDraw(criterion, extreme) {
 }
 
 /**
- * Lines of the included sets that fall inside [yMin, yMax]. `extremes` maps
- * a set's `applies` ('main' | 'overlay' | 'hi' | 'lo') to { lo, hi } of the
- * data it compares with; with it, each set stops at its next level.
+ * Lines of every set that fall inside [yMin, yMax] (whether or not the set
+ * stretched the scale). `extremes` maps a set's `applies` ('main' |
+ * 'overlay' | 'hi' | 'lo') to { lo, hi } of the data it compares with; with
+ * it, each set stops at its next level.
  */
-export function thresholdLines(sets, included, yMin, yMax, extremes) {
+export function thresholdLines(sets, yMin, yMax, extremes) {
 	const out = []
 	for (const s of sets ?? []) {
-		if (!included.has(s.key)) continue
 		const range = extremes?.[s.applies ?? 'main']
 		const extreme = range ? (s.criterion.direction === 'down' ? range.lo : range.hi) : undefined
 		for (const t of levelsToDraw(s.criterion, extreme)) {
@@ -87,9 +100,14 @@ export function thresholdLines(sets, included, yMin, yMax, extremes) {
 	return out
 }
 
-/** "limiar amarelo 10 mm/h, fora da escala" (one per set, joined). */
-export function outOfScaleText(sets) {
+/**
+ * "limiar amarelo 10 mm/h, fora da escala" (one per set, joined). With
+ * [yMin, yMax], only for sets whose yellow really is off the final axis.
+ */
+export function outOfScaleText(sets, yMin = null, yMax = null) {
+	const off = (v) => yMin == null || yMax == null || v < yMin || v > yMax
 	return (sets ?? [])
+		.filter((s) => off(s.criterion.levels[0].value))
 		.map((s) => {
 			const y = s.criterion.levels[0]
 			const who = s.name || s.title ? `${s.name || s.title}: ` : ''

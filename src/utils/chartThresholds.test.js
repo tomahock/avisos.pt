@@ -34,7 +34,7 @@ describe('scale rule: data must fill ≥ 50 % of the Y range', () => {
 
 describe('thresholdLines', () => {
 	test('stops at the next level not reached by the data', () => {
-		const lines = thresholdLines(LSB.chuva, new Set(['rain1h', 'rain6h']), 0, 60, { main: { lo: 0, hi: 11 }, overlay: { lo: 0, hi: 46 } })
+		const lines = thresholdLines(LSB.chuva, 0, 60, { main: { lo: 0, hi: 11 }, overlay: { lo: 0, hi: 46 } })
 		expect(lines.map((l) => [l.key, l.label])).toEqual([
 			['rain1h-yellow', 'amarelo 10'],
 			['rain1h-orange', 'laranja 21'],
@@ -44,13 +44,13 @@ describe('thresholdLines', () => {
 		])
 	})
 	test('cold goes downwards; lines outside the scale are dropped', () => {
-		const lines = thresholdLines(LSB.temperatura, new Set(['cold']), 0, 20, { main: { lo: 8, hi: 16 } })
+		const lines = thresholdLines(LSB.temperatura, 0, 20, { main: { lo: 8, hi: 16 } })
 		expect(lines.map((l) => l.label)).toEqual(['amarelo 3'])
-		const all = thresholdLines(LSB.temperatura, new Set(['cold']), -5, 20)
+		const all = thresholdLines(LSB.temperatura, -5, 20)
 		expect(all.map((l) => l.label)).toEqual(['amarelo 3', 'laranja 0', 'vermelho < -1'])
 	})
 	test('gusts are marked as reference', () => {
-		const [l] = thresholdLines(AOR.vento, new Set(['gust']), 0, 90, { main: { lo: 60, hi: 80 } })
+		const [l] = thresholdLines(AOR.vento, 0, 90, { main: { lo: 60, hi: 80 } })
 		expect(l).toMatchObject({ level: 'yellow', value: 85, reference: true, label: 'rajada 85' })
 		expect(l.title).toBe('Limiar amarelo (rajada, referência): 85 km/h')
 	})
@@ -94,4 +94,35 @@ test('thresholdsSummary and extent', () => {
 	expect(thresholdsSummary(rain1h)).toBe('mm/1h: amarelo 10, laranja 21, vermelho > 40 mm/h')
 	expect(extent([3, null, -1, 7])).toEqual({ lo: -1, hi: 7 })
 	expect(extent([null])).toBeUndefined()
+})
+
+// Codex review on #45.
+describe('review: scale budget and in-scale levels', () => {
+	test('levels already inside the chart are drawn even when yellow is out of scale (heat at 38–40 °C)', () => {
+		const d = thresholdDomain(38, 40, LSB.temperatura)
+		expect(d.included.has('heat')).toBe(false) // yellow 34 would squash the chart
+		const lines = thresholdLines(LSB.temperatura, 38, 40, { main: { lo: 38, hi: 40 } })
+		expect(lines.map((l) => l.key)).toEqual(['heat-orange', 'heat-red'])
+	})
+	test('the 50 % budget holds for the combined domain (heat and cold on opposite ends)', () => {
+		const d = thresholdDomain(13, 24, LSB.temperatura)
+		expect((24 - 13) / (d.hi - d.lo)).toBeGreaterThanOrEqual(0.5)
+		expect(d.included.size).toBeLessThanOrEqual(1)
+	})
+})
+
+test('review: the budget is checked on the rounded axis when the chart rounds it (niceTicks)', () => {
+	// Heat yellow 34 on 13–24 °C: raw 13–34 → data 52 %, but the axis would be 10–35 → 44 %.
+	const nice = (l, h) => [Math.floor(l / 5) * 5, Math.ceil(h / 5) * 5]
+	const heatOnly = LSB.temperatura.filter((s) => s.key === 'heat')
+	expect(thresholdDomain(13, 24, heatOnly).included.has('heat')).toBe(true)
+	expect(thresholdDomain(13, 24, heatOnly, nice).included.has('heat')).toBe(false)
+	// A threshold inside the data never stretches anything: always accepted.
+	expect(thresholdDomain(30, 36, heatOnly, nice).included.has('heat')).toBe(true)
+})
+
+test('review: "fora da escala" only for a yellow really off the final axis', () => {
+	const heatOnly = LSB.temperatura.filter((s) => s.key === 'heat')
+	expect(outOfScaleText(heatOnly, 30, 40)).toBe('')
+	expect(outOfScaleText(heatOnly, 10, 25)).toBe('Tempo Quente: limiar amarelo 34 °C, fora da escala')
 })

@@ -99,17 +99,21 @@ export default function StationChart({
 		lo = 0
 		hi = Math.max(hi, 1)
 	}
-	const fit = hasData ? thresholdDomain(lo, hi, thresholds) : { lo, hi, included: new Set(), outOfScale: [] }
+	const tickExtent = (l, h) => {
+		const t = niceTicks(l, h)
+		return [t[0], t.at(-1)]
+	}
+	const fit = hasData ? thresholdDomain(lo, hi, thresholds, tickExtent) : { lo, hi, included: new Set(), outOfScale: [] }
 	const ticks = niceTicks(fit.lo, fit.hi)
 	const yMin = ticks[0]
 	const yMax = ticks.at(-1)
-	const lines = thresholdLines(thresholds, fit.included, yMin, yMax, {
+	const lines = thresholdLines(thresholds, yMin, yMax, {
 		main: extent(points.map((p) => p.v)),
 		overlay: extent(overlay?.values),
 		hi: extent(points.map((p) => p.hi)),
 		lo: extent(points.map((p) => p.lo)),
 	})
-	const outOfScale = hasData ? outOfScaleText(fit.outOfScale) : ''
+	const outOfScale = hasData ? outOfScaleText(fit.outOfScale, yMin, yMax) : ''
 	const y = (v) => PAD.top + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH
 
 	const slot = n > 0 ? plotW / n : plotW
