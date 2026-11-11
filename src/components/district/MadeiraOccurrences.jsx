@@ -13,12 +13,11 @@ import {
 	isMadeiraArea,
 	newestFirst,
 	occurrenceCount,
+	srpcFresh,
 	totalCount,
 	unplacedOccurrences,
 } from '../../utils/madeira.js'
 
-// Past this age a snapshot is too old to show at all (FogosPT outage).
-const MAX_STALE_MS = 15 * 60 * 1000
 const COLLAPSED = 8
 
 function plural(n, one, many) {
@@ -27,13 +26,6 @@ function plural(n, one, many) {
 
 function hhmm(d) {
 	return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-}
-
-// A part of the data is usable if it loaded once and, when the latest
-// refresh failed, the last good copy is still recent.
-function usable(loadedAt, failed, now) {
-	if (!loadedAt) return false
-	return !failed || now - loadedAt.getTime() <= MAX_STALE_MS
 }
 
 function OccurrenceItem({ o }) {
@@ -98,8 +90,8 @@ export default function MadeiraOccurrences({ code }) {
 	}, [list])
 
 	if (!madeira) return null
-	const showEvent = usable(loadedAt.event, failed.event, now) && activeEvent(event)
-	const showList = usable(loadedAt.occurrences, failed.occurrences, now)
+	const showEvent = srpcFresh(loadedAt.event, failed.event, now) && activeEvent(event)
+	const showList = srpcFresh(loadedAt.occurrences, failed.occurrences, now)
 	if (!showEvent && !showList) return null
 
 	const area = IPMA_AREAS[code]
@@ -116,6 +108,12 @@ export default function MadeiraOccurrences({ code }) {
 				<span className="text-xs text-gray-500">Proteção Civil da Madeira, últimas 24 h</span>
 			</div>
 
+			{showEvent && failed.event && (
+				<p className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-2 text-xs text-amber-800 dark:text-amber-200">
+					<i className="fas fa-triangle-exclamation" aria-hidden />
+					Não foi possível atualizar o evento — dados das {hhmm(loadedAt.event)}.
+				</p>
+			)}
 			{showEvent && <MadeiraEventPanel event={event} code={code} />}
 
 			{showList && (

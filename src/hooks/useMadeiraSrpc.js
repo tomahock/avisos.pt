@@ -4,12 +4,13 @@ import { fetchJson } from '../utils/fetchJson.js'
 
 const REFRESH_MS = 2 * 60 * 1000
 
-// SRPC, IP-RAM data (via FogosPT): the current adverse-weather event and,
-// when `occurrences` is set, the occurrences of the last 24 h. Refetched
+// SRPC, IP-RAM data (via FogosPT): the current adverse-weather event and/or
+// the occurrences of the last 24 h (`event` / `occurrences` flags). Refetched
 // every 2 min. Each part fails on its own: `event`/`occurrences` keep the
 // last good value, `failed.<part>` says the latest refresh failed and
-// `loadedAt.<part>` when it last succeeded (null = never).
-export function useMadeiraSrpc({ enabled = true, occurrences: withOccurrences = true } = {}) {
+// `loadedAt.<part>` when it last succeeded (null = never). Callers must gate
+// what they show with srpcFresh() (utils/madeira.js) and a ticking clock.
+export function useMadeiraSrpc({ enabled = true, event: withEvent = true, occurrences: withOccurrences = true } = {}) {
 	const [event, setEvent] = useState(null)
 	const [occurrences, setOccurrences] = useState(null)
 	const [loadedAt, setLoadedAt] = useState({ event: null, occurrences: null })
@@ -31,7 +32,7 @@ export function useMadeiraSrpc({ enabled = true, occurrences: withOccurrences = 
 		const load = () => {
 			ctrl?.abort()
 			ctrl = new AbortController()
-			part('event', '/api/madeira/event', setEvent, (d) => d?.event ?? null)
+			if (withEvent) part('event', '/api/madeira/event', setEvent, (d) => d?.event ?? null)
 			if (withOccurrences) part('occurrences', '/api/madeira/occurrences', setOccurrences, (d) => (Array.isArray(d) ? d : []))
 		}
 		load()
@@ -40,7 +41,7 @@ export function useMadeiraSrpc({ enabled = true, occurrences: withOccurrences = 
 			clearInterval(id)
 			ctrl?.abort()
 		}
-	}, [enabled, withOccurrences])
+	}, [enabled, withEvent, withOccurrences])
 
 	return { event, occurrences, loadedAt, failed }
 }

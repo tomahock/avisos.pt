@@ -12,8 +12,9 @@ import { fetchJson } from '../utils/fetchJson.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { PAGE_META } from '../utils/share.js'
 import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
-import { occurrenceWindow, occurrencesBetween, parishGroups, totalCount } from '../utils/madeira.js'
+import { occurrenceWindow, occurrencesBetween, parishGroups, srpcFresh, totalCount } from '../utils/madeira.js'
 import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
+import { useMadeiraSrpc } from '../hooks/useMadeiraSrpc.js'
 
 const REGIONS = [
 	{
@@ -63,7 +64,6 @@ export default function MapPage() {
 	const warnings = useActiveWarnings(rawWarnings)
 	const [stations, setStations] = useState([])
 	const [obs, setObs] = useState({})
-	const [occurrences, setOccurrences] = useState(null)
 	const [geoContinental, setGeoContinental] = useState(null)
 	const [geoArquipelagos, setGeoArquipelagos] = useState(null)
 	const [error, setError] = useState(null)
@@ -71,6 +71,12 @@ export default function MapPage() {
 	const [reloadKey, setReloadKey] = useState(0)
 	const [now, setNow] = useState(() => new Date())
 	const [searchParams, setSearchParams] = useSearchParams()
+
+	// SRPC, IP-RAM occurrences (Madeira) — optional layer, never blocks the
+	// page; polled on its own every 2 min like the district pages.
+	const srpc = useMadeiraSrpc({ event: false })
+	const occLoadedAt = srpc.loadedAt.occurrences
+	const occFailed = srpc.failed.occurrences
 
 	// Keep "Agora" honest on a page left open — warnings start/end over time.
 	useEffect(() => {
@@ -104,11 +110,6 @@ export default function MapPage() {
 			.then((data) => setObs(data?.stations ?? {}))
 			.catch(() => {})
 
-		// SRPC, IP-RAM occurrences (Madeira) — optional layer, never blocks.
-		fetchJson('/api/madeira/occurrences', ctrl.signal)
-			.then((data) => setOccurrences(Array.isArray(data) ? data : []))
-			.catch(() => {})
-
 		return () => ctrl.abort()
 	}, [reloadKey])
 
@@ -134,6 +135,10 @@ export default function MapPage() {
 	const isNow = period.key === 'agora'
 	// Occurrences are past events: "Agora" = last 24 h, today = since
 	// midnight, future days = none (the layer stays, empty, with a note).
+	// A snapshot that stopped refreshing for 15 min is dropped, not shown
+	// against a window that keeps moving.
+	const occFresh = srpcFresh(occLoadedAt, occFailed, now.getTime())
+	const occurrences = useMemo(() => (occFresh ? srpc.occurrences : occLoadedAt ? [] : null), [occFresh, srpc.occurrences, occLoadedAt])
 	const occWindow = useMemo(() => occurrenceWindow(period, now), [period, now])
 	const periodOccurrences = useMemo(
 		() => (occurrences && occWindow ? occurrencesBetween(occurrences, occWindow.from, occWindow.to) : []),
@@ -245,13 +250,24 @@ export default function MapPage() {
 					/>
 					{occurrences && (
 						<p className="m-0 border-t border-gray-200 bg-surface px-3 py-2 text-xs text-gray-500" data-testid="madeira-occurrences-note">
-							{occurrencesNote(periodOccurrences, occWindow)}
+							{occFailed && (
+								<span className="font-semibold text-amber-700 dark:text-amber-300">
+									{occFresh
+										? `Não foi possível atualizar as ocorrências — dados das ${hhmm(occLoadedAt)}. `
+										: `Não foi possível atualizar as ocorrências desde as ${hhmm(occLoadedAt)}. `}
+								</span>
+							)}
+							{occFresh && occurrencesNote(periodOccurrences, occWindow)}
 						</p>
 					)}
 				</RegionCard>
 			</div>
 		</Layout>
 	)
+}
+
+function hhmm(d) {
+	return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
 }
 
 const SRPC = 'da Proteção Civil da Madeira (SRPC, IP-RAM)'

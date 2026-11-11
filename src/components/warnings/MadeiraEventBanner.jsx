@@ -1,14 +1,18 @@
 import { Link } from 'react-router-dom'
 
 import { useMadeiraSrpc } from '../../hooks/useMadeiraSrpc.js'
+import { useNow } from '../../hooks/useNow.js'
 import { districtPath } from '../../utils/share.js'
-import { activeEvent, eventAreaOccurrences, formatInstant } from '../../utils/madeira.js'
+import { activeEvent, eventAreaOccurrences, formatInstant, srpcFresh } from '../../utils/madeira.js'
 
 // Home page, under the Madeira chips: one line when SRPC, IP-RAM has an
 // adverse-weather event open, linking to the area with most occurrences.
+// A copy that stopped refreshing for 15 min is dropped (the event may have
+// closed upstream meanwhile); the clock ticks so it expires on an open tab.
 export default function MadeiraEventBanner({ className = '' }) {
-	const { event: raw } = useMadeiraSrpc({ occurrences: false })
-	const event = activeEvent(raw)
+	const { event: raw, loadedAt, failed } = useMadeiraSrpc({ occurrences: false })
+	const now = useNow().getTime()
+	const event = srpcFresh(loadedAt.event, failed.event, now) ? activeEvent(raw) : null
 	if (!event) return null
 	const target = ['MCS', 'MCN', 'MPS'].reduce((best, c) => ((eventAreaOccurrences(event, c) ?? 0) > (eventAreaOccurrences(event, best) ?? 0) ? c : best), 'MCS')
 	const n = event.kpi.occurrences

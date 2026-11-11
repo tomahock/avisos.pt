@@ -72,3 +72,33 @@ test('/mapa: the SRPC layer can be turned off, and future days have no occurrenc
 	await expect(madeira.locator(MARKER)).toHaveCount(0)
 	await expect(madeira.getByTestId('madeira-occurrences-note')).toContainText('não aparecem nos dias seguintes')
 })
+
+// Review #37: the layer must refresh while /mapa stays open, and a snapshot
+// that stopped refreshing must not stay on the map. The browser clock is
+// fast-forwarded; the API answers are swapped with page.route.
+test('/mapa: SRPC occurrences refresh while the page is open, and a dead feed expires', async ({ page }) => {
+	await page.clock.install()
+	let mode = 'real'
+	let extra = null
+	await page.route('**/api/madeira/occurrences', async (route) => {
+		if (mode === 'down') return route.fulfill({ status: 502, contentType: 'application/json', body: '{"error":"upstream_error"}' })
+		const res = await route.fetch()
+		const list = await res.json()
+		if (extra) list.unshift(extra)
+		return route.fulfill({ response: res, json: list })
+	})
+	await page.goto('/mapa')
+	const madeira = madeiraMap(page)
+	await expect(madeira.locator(MARKER)).toHaveCount(4)
+
+	// A new occurrence in a new parish (Machico centroid), recorded "now".
+	const now = await page.evaluate(() => Date.now())
+	extra = { id: 'nova', copies: 1, start: new Date(now).toISOString(), natureCode: '3301', nature: 'Queda de Árvore', firefighters: 2, vehicles: 1, parishCode: '310403', parish: 'Machico', municipalityCode: '3104', municipality: 'Machico', lat: 32.718, lng: -16.766 }
+	await page.clock.fastForward('02:05')
+	await expect(madeira.locator(MARKER)).toHaveCount(5)
+
+	mode = 'down'
+	await page.clock.fastForward('16:00')
+	await expect(madeira.locator(MARKER)).toHaveCount(0)
+	await expect(madeira.getByTestId('madeira-occurrences-note')).toContainText('Não foi possível atualizar')
+})

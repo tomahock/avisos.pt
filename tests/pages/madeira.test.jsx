@@ -2,7 +2,7 @@
 // /api/madeira/* Pages Functions and the fake FogosPT): the event panel, the
 // occurrences of each area, MRM = whole island, empty/failing endpoints.
 
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { makeFixtures } from '../fixtures/data.js'
@@ -175,5 +175,56 @@ describe('home page banner', () => {
 		await waitFor(() => expect(calls).toContain('/api/madeira/event'))
 		await waitFor(() => expect(document.querySelector('.fa-spin')).toBeNull())
 		expect(screen.queryByRole('link', { name: /Proteção Civil da Madeira/ })).not.toBeInTheDocument()
+	})
+})
+
+// Review #37: a retained event must not be advertised forever when its
+// refresh keeps failing (same 15-min cutoff as the occurrences).
+describe('stale SRPC event after refresh failures', () => {
+	// Fake the refresh/clock intervals too, so 16 minutes pass instantly.
+	const withClock = () => {
+		vi.useRealTimers()
+		vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+		vi.setSystemTime(NOW)
+	}
+	// /api/madeira/event answers normally until `down()`, then 502 — the
+	// other endpoints keep going through the real functions.
+	const flakyEvent = () => {
+		let down = false
+		const { fetchMock } = mockApi({ now: NOW })
+		const real = fetchMock.getMockImplementation()
+		fetchMock.mockImplementation(async (input, init) => {
+			const url = typeof input === 'string' ? input : input.url
+			if (down && url.startsWith('/api/madeira/event')) return new Response('{}', { status: 502 })
+			return real(input, init)
+		})
+		return { down: () => (down = true) }
+	}
+
+	test('home banner: kept through a short outage, gone after 15 min', async () => {
+		withClock()
+		const flaky = flakyEvent()
+		renderRoute('/')
+		expect(await screen.findByRole('link', { name: /Proteção Civil da Madeira/ }, { timeout: 3000 })).toBeInTheDocument()
+		flaky.down()
+		await act(async () => vi.advanceTimersByTime(4 * 60 * 1000))
+		expect(screen.getByRole('link', { name: /Proteção Civil da Madeira/ })).toBeInTheDocument()
+		await act(async () => vi.advanceTimersByTime(12 * 60 * 1000))
+		await waitFor(() => expect(screen.queryByRole('link', { name: /Proteção Civil da Madeira/ })).not.toBeInTheDocument())
+	})
+
+	test('district panel: says the event could not be updated, then hides it', async () => {
+		withClock()
+		const flaky = flakyEvent()
+		renderRoute('/distrito/madeira-costa-sul')
+		expect(await screen.findByText('Evento ativo', {}, { timeout: 3000 })).toBeInTheDocument()
+		flaky.down()
+		await act(async () => vi.advanceTimersByTime(4 * 60 * 1000))
+		expect(screen.getByText('Evento ativo')).toBeInTheDocument()
+		expect(await screen.findByText(/Não foi possível atualizar o evento — dados das 14:00/)).toBeInTheDocument()
+		await act(async () => vi.advanceTimersByTime(12 * 60 * 1000))
+		await waitFor(() => expect(screen.queryByText('Evento ativo')).not.toBeInTheDocument())
+		// The occurrences kept refreshing fine and stay.
+		expect(screen.getByRole('list', { name: 'Ocorrências em Madeira – Costa Sul' })).toBeInTheDocument()
 	})
 })

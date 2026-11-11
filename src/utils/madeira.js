@@ -124,6 +124,19 @@ export function occurrenceWindow(period, now = new Date()) {
 	return null
 }
 
+// Past this age a snapshot that stopped refreshing is not shown at all
+// (FogosPT/SRPC outage): never advertise old occurrences or a closed event.
+export const SRPC_MAX_STALE_MS = 15 * 60 * 1000
+
+/**
+ * Can a part of the SRPC data (useMadeiraSrpc) be shown? Only if it loaded
+ * once and, when the latest refresh failed, the last good copy is recent.
+ */
+export function srpcFresh(loadedAt, failed, now = Date.now()) {
+	if (!loadedAt) return false
+	return !failed || now - loadedAt.getTime() <= SRPC_MAX_STALE_MS
+}
+
 /** The event panel only shows an event SRPC still flags as active. */
 export function activeEvent(event) {
 	return event && event.active === true && event.status !== 'ENCERRADO' ? event : null
