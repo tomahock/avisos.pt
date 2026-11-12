@@ -19,6 +19,8 @@ test('Faro gets a yellow sea band under the land polygons @responsive', async ({
 	const z = await cont.locator('.leaflet-sea-bands-pane').evaluate((el) => Number(getComputedStyle(el).zIndex))
 	expect(z).toBeLessThan(400)
 	await expect(cont.getByText('Faixa no mar (20 km):')).toBeVisible()
+	// Faro only has the sea-state warning: its land is not shaded (#52).
+	await expect(cont.locator('.leaflet-overlay-pane path[fill="#facc15"]')).toHaveCount(0)
 	watch.assertClean()
 })
 
