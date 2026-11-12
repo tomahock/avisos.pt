@@ -62,6 +62,10 @@ Mapa base
 
 Ícones e tipos de letra (carregados de CDN, não incluídos no repositório)
     Font Awesome Free — ícones CC BY 4.0, fontes SIL OFL 1.1, código MIT.
+
+Ícone de agitação marítima (src/data/warningTypes.js)
+    "tsunami" dos Material Symbols (Rounded, preenchido), Google —
+    Apache License 2.0 — https://github.com/google/material-design-icons
     Fira Sans — SIL Open Font License 1.1 (Google Fonts / Fontsource).
 
 As dependências de npm mantêm as suas próprias licenças (ver package.json e

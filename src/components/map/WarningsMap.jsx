@@ -20,7 +20,7 @@ import { areaAnchors } from './anchors.js'
 import { IPMA_AREAS, codeFromContinentalName } from '../../data/ipmaAreas.js'
 import { codeForFeature } from '../../data/islandConcelhos.js'
 import { LEVELS, levelMeta, worstLevelId } from '../../data/levels.js'
-import { typeRank, warningTypeMeta } from '../../data/warningTypes.js'
+import { typeIconHtml, typeRank, warningTypeMeta } from '../../data/warningTypes.js'
 import {
 	formatHumidity,
 	formatPrecip,
@@ -189,7 +189,7 @@ function warningIcon(items) {
 	const extra = items.length - shown.length
 	const cells = shown.map(({ type, level }) => {
 		const meta = warningTypeMeta(type)
-		return `<span title="${esc(`${meta.label ?? type} — ${levelMeta(level).label}`)}" style="display:flex;align-items:center;justify-content:center;width:${ICON_PX}px;height:${ICON_PX}px;border-radius:6px;background:${LEVELS[level]?.fill ?? '#94a3b8'};color:${ICON_INK[level] ?? '#fff'};font-size:${meta.emoji ? 13 : 11}px">${meta.emoji ? `<span style="line-height:1">${meta.emoji}</span>` : `<i class="fas ${meta.icon}"></i>`}</span>`
+		return `<span title="${esc(`${meta.label ?? type} — ${levelMeta(level).label}`)}" style="display:flex;align-items:center;justify-content:center;width:${ICON_PX}px;height:${ICON_PX}px;border-radius:6px;background:${LEVELS[level]?.fill ?? '#94a3b8'};color:${ICON_INK[level] ?? '#fff'};font-size:11px">${typeIconHtml(type)}</span>`
 	})
 	if (extra > 0) {
 		cells.push(`<span style="display:flex;align-items:center;justify-content:center;height:${ICON_PX}px;padding:0 4px;font-size:11px;font-weight:700;color:rgb(var(--gray-700))">+${extra}</span>`)

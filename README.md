@@ -58,7 +58,7 @@ Ideias, correções e melhorias são muito bem-vindas — não é preciso progra
 - **Limites dos concelhos**: [FrancisPais/geojson-portugal-continental](https://github.com/FrancisPais/geojson-portugal-continental) e [FrancisPais/geojson-portugal-arquipelagos](https://github.com/FrancisPais/geojson-portugal-arquipelagos)
 - **Costa de Espanha** (para delimitar as faixas de agitação marítima no mapa): [Natural Earth](https://www.naturalearthdata.com) (domínio público)
 - **Mapa base**: © contribuidores do [OpenStreetMap](https://www.openstreetmap.org/copyright)
-- **Ícones**: [Font Awesome Free](https://fontawesome.com) · **Tipo de letra**: Fira Sans
+- **Ícones**: [Font Awesome Free](https://fontawesome.com) e [Material Symbols](https://fonts.google.com/icons) (onda da agitação marítima, Apache-2.0) · **Tipo de letra**: Fira Sans
 
 Pormenores e licenças de terceiros em [`NOTICE`](NOTICE).
 
