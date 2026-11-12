@@ -18,7 +18,8 @@ test('Faro gets a yellow sea band under the land polygons @responsive', async ({
 	// The band pane sits below the overlay pane (land polygons on top).
 	const z = await cont.locator('.leaflet-sea-bands-pane').evaluate((el) => Number(getComputedStyle(el).zIndex))
 	expect(z).toBeLessThan(400)
-	await expect(cont.getByText('Faixa no mar (20 km):')).toBeVisible()
+	// Overlay legend (sm+) or strip under the map (phones) — one of them shows.
+	await expect(cont.getByText('Faixa no mar (20 km):').locator('visible=true')).toBeVisible()
 	watch.assertClean()
 })
 
