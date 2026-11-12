@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 
 import { mapPeriods, warningsInPeriod } from './timeline.js'
-import { bandsForRegion, seaBandStyle, seaWarningsByCode } from './seaBands.js'
+import { bandsForRegion, landFillWarnings, seaBandStyle, seaWarningsByCode } from './seaBands.js'
 
 const w = (idAreaAviso, awarenessLevelID, startTime, endTime, awarenessTypeName = 'Agitação Marítima') => ({
 	idAreaAviso,
@@ -47,4 +47,23 @@ test('bandsForRegion splits the collection per map', () => {
 test('style uses the level fill (Leaflet needs hex)', () => {
 	expect(seaBandStyle('red')).toMatchObject({ fillColor: '#dc2626', color: '#dc2626' })
 	expect(seaBandStyle('nope').fillColor).toBe('#94a3b8')
+})
+
+test('land fill ignores Agitação Marítima where the sea band is drawn', () => {
+	const byCode = new Map([
+		['FAR', [w('FAR', 'red', '2026-11-11T06:00:00', '2026-11-11T18:00:00')]],
+		['LSB', [w('LSB', 'red', '2026-11-11T06:00:00', '2026-11-11T18:00:00'), w('LSB', 'yellow', '2026-11-11T06:00:00', '2026-11-11T18:00:00', 'Vento')]],
+		['PTO', [w('PTO', 'orange', '2026-11-11T06:00:00', '2026-11-11T18:00:00')]],
+		['BRA', [w('BRA', 'yellow', '2026-11-11T06:00:00', '2026-11-11T18:00:00', 'Neve')]],
+	])
+	const land = landFillWarnings(byCode, new Set(['FAR', 'LSB']))
+	// Only sea state → no land fill.
+	expect(land.has('FAR')).toBe(false)
+	// Other warnings → the land takes their level, not the sea's.
+	expect(land.get('LSB').map((x) => x.awarenessTypeName)).toEqual(['Vento'])
+	// No band for that area (geometry missing) → the land keeps the sea warning.
+	expect(land.get('PTO')).toHaveLength(1)
+	expect(land.get('BRA')).toHaveLength(1)
+	// Without bands nothing changes.
+	expect(landFillWarnings(byCode, null)).toBe(byCode)
 })

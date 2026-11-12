@@ -28,7 +28,7 @@ import {
 	formatWhen,
 	formatWind,
 } from '../../utils/format.js'
-import { seaBandStyle, seaWarningsByCode } from '../../utils/seaBands.js'
+import { landFillWarnings, seaBandStyle, seaWarningsByCode } from '../../utils/seaBands.js'
 import { districtPath } from '../../utils/share.js'
 import { stationPath } from '../../utils/stations.js'
 import { pointInBounds, stationInBounds } from './bounds.js'
@@ -75,9 +75,9 @@ function districtPopupHtml(title, warnings, emptyText, code) {
 	`
 }
 
-function districtStyle(feature, warningsByCode) {
+function districtStyle(feature, fillByCode) {
 	const code = codeForFeature(feature, codeFromContinentalName)
-	const list = code ? warningsByCode.get(code) : null
+	const list = code ? fillByCode.get(code) : null
 	const worst = list ? worstLevelId(list) : null
 	const fill = worst ? LEVELS[worst].fill : '#ffffff'
 	return {
@@ -89,10 +89,12 @@ function districtStyle(feature, warningsByCode) {
 	}
 }
 
-function DistrictLayer({ geojson, warningsByCode, emptyText }) {
+// `fillByCode` colours the polygons (no sea-state warnings where the sea band
+// shows them); the popups still list every warning of the area.
+function DistrictLayer({ geojson, warningsByCode, fillByCode, emptyText }) {
 	const style = useMemo(
-		() => (feature) => districtStyle(feature, warningsByCode),
-		[warningsByCode]
+		() => (feature) => districtStyle(feature, fillByCode),
+		[fillByCode]
 	)
 	const onEachFeature = useMemo(
 		() => (feature, layer) => {
@@ -113,8 +115,9 @@ function DistrictLayer({ geojson, warningsByCode, emptyText }) {
 		for (const [code, list] of warningsByCode) {
 			parts.push(`${code}:${list.map((w) => `${w.awarenessLevelID}@${w.startTime}`).join(',')}`)
 		}
+		for (const code of fillByCode.keys()) parts.push(`fill:${code}`)
 		return parts.sort().join('|')
-	}, [warningsByCode, emptyText])
+	}, [warningsByCode, fillByCode, emptyText])
 	return (
 		<GeoJSON key={key} data={geojson} style={style} onEachFeature={onEachFeature} />
 	)
@@ -323,6 +326,12 @@ export default function WarningsMap({
 		return map
 	}, [warnings])
 
+	// Sea-state warnings shade only the sea where this map draws the area's band.
+	const fillByCode = useMemo(
+		() => landFillWarnings(warningsByCode, new Set((seaBands?.features ?? []).map((f) => f.properties?.code))),
+		[warningsByCode, seaBands]
+	)
+
 	const filteredStations = useMemo(
 		() => stations.filter((f) => stationInBounds(f, bounds)),
 		[stations, bounds]
@@ -361,6 +370,7 @@ export default function WarningsMap({
 							<DistrictLayer
 								geojson={geojson}
 								warningsByCode={warningsByCode}
+								fillByCode={fillByCode}
 								emptyText={emptyText}
 							/>
 						</LayerGroup>

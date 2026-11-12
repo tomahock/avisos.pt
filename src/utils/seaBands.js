@@ -22,6 +22,22 @@ export function seaWarningsByCode(warnings) {
 	return byCode
 }
 
+/**
+ * Warnings that colour each area's land polygon: Agitação Marítima is left
+ * out wherever that area's sea band is drawn (`seaCodes`), so the sea state
+ * only shades the sea and the land only takes the other warnings' level.
+ * Areas left with nothing are absent. Without bands, `byCode` unchanged.
+ */
+export function landFillWarnings(byCode, seaCodes) {
+	if (!seaCodes || seaCodes.size === 0) return byCode
+	const out = new Map()
+	for (const [code, list] of byCode) {
+		const kept = seaCodes.has(code) ? list.filter((w) => w?.awarenessTypeName !== SEA_WARNING_TYPE) : list
+		if (kept.length > 0) out.set(code, kept)
+	}
+	return out
+}
+
 /** Bands of one map's region (continental / acores / madeira). */
 export function bandsForRegion(collection, region) {
 	return {
