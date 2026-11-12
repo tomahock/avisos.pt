@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import Layout from '../layouts/index.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
+import MapLegend from '../components/map/MapLegend.jsx'
 import MapPeriodPicker from '../components/map/MapPeriodPicker.jsx'
 import MadeiraOccurrencesLayer from '../components/map/MadeiraOccurrencesLayer.jsx'
 import WarningsMap from '../components/map/WarningsMap.jsx'
@@ -226,6 +227,8 @@ export default function MapPage() {
 						height={continental.heightClass}
 						showLegend
 					/>
+					{/* Phones: legend under the map instead of over it (sm:hidden). */}
+					<MapLegend variant="strip" />
 				</RegionCard>
 			</div>
 

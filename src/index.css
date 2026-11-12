@@ -136,3 +136,18 @@
 [data-ring] {
 	stroke: rgb(var(--surface));
 }
+
+/* --- Leaflet popup close button on phones --------------------------------
+   Leaflet's default X is a 24 px corner hit area — too small for a thumb.
+   Bigger target, and room on the right so the title never runs under it.
+   Extra selector weight: leaflet.css loads later (map chunk) with the same. */
+@media (max-width: 639px) {
+	.leaflet-container .leaflet-popup a.leaflet-popup-close-button {
+		width: 40px;
+		height: 40px;
+		font: 24px/40px Tahoma, Verdana, sans-serif;
+	}
+	.leaflet-popup .leaflet-popup-content {
+		margin-right: 40px;
+	}
+}
