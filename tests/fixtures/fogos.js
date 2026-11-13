@@ -6,6 +6,8 @@ export function fogosRoute(fx, url) {
 	const p = u.pathname
 	const q = u.searchParams
 	if (p === '/v2/warnings/ipma') return { status: 200, body: fx.warnings }
+	// `peninsula` is accepted and ignored: the fixtures are all peninsular.
+	if (p === '/v2/warnings/aemet') return { status: 200, body: fx.aemetWarnings ?? [] }
 	if (p === '/v2/warnings/ipma/history') {
 		const csv = (name) => (q.get(name) ? q.get(name).split(',') : null)
 		const area = csv('area')

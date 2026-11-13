@@ -29,6 +29,7 @@ import {
 	formatWind,
 } from '../../utils/format.js'
 import { landFillWarnings, seaBandStyle, seaWarningsByCode } from '../../utils/seaBands.js'
+import { displayText, parameterText, probabilityText } from '../../utils/aemetText.js'
 import { districtPath } from '../../utils/share.js'
 import { stationPath } from '../../utils/stations.js'
 import { pointInBounds, stationInBounds } from './bounds.js'
@@ -46,21 +47,26 @@ function districtLinkHtml(code) {
 	return `<a href="${esc(districtPath(code))}" class="inline-block mt-2 text-xs font-semibold text-primary-700">Ver página de ${esc(IPMA_AREAS[code]?.name ?? code)} →</a>`
 }
 
-function districtPopupHtml(title, warnings, emptyText, code) {
+// Popup of an area: its warnings (or `emptyText`), `text(w)` = the
+// warning's text line (none when null), `detail(w)` = extra lines per
+// warning, `footer` = HTML after the list.
+function warningsPopupHtml(title, warnings, emptyText, { text = (w) => w.text ?? '', detail = () => '', footer = '' } = {}) {
 	if (!warnings || warnings.length === 0) {
-		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(title)}</p><p class="text-xs text-gray-500 mt-1 mb-0">${esc(emptyText)}</p>${districtLinkHtml(code)}</div>`
+		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(title)}</p><p class="text-xs text-gray-500 mt-1 mb-0">${esc(emptyText)}</p>${footer}</div>`
 	}
 	const items = warnings
 		.map((w) => {
 			const lvl = levelMeta(w.awarenessLevelID)
 			const type = warningTypeMeta(w.awarenessTypeName)
+			const body = text(w)
+			const textLine = body == null ? '' : `<p class="text-xs text-gray-600 mt-0.5 mb-0">${esc(body)}</p>`
 			return `
 				<li class="flex gap-2 items-start">
 					<span class="inline-block w-2 h-2 mt-1.5 rounded-sm" style="background:${lvl.fill}"></span>
 					<div class="min-w-0">
 						<p class="text-sm font-semibold text-gray-900 m-0">${esc(type.label ?? w.awarenessTypeName)}</p>
-						<p class="text-xs text-gray-600 mt-0.5 mb-0">${esc(w.text ?? '')}</p>
-						<p class="text-[10px] text-gray-400 mt-0.5 mb-0">${esc(formatWhen(w.startTime))} → ${esc(formatWhen(w.endTime))}</p>
+						${textLine}
+						<p class="text-[10px] text-gray-400 mt-0.5 mb-0">${esc(formatWhen(w.startTime))} → ${esc(formatWhen(w.endTime))}</p>${detail(w)}
 					</div>
 				</li>
 			`
@@ -70,23 +76,41 @@ function districtPopupHtml(title, warnings, emptyText, code) {
 		<div class="min-w-[240px] max-w-[280px]">
 			<p class="font-bold text-gray-900 m-0 mb-2">${esc(title)}</p>
 			<ul class="list-none m-0 p-0 space-y-2">${items}</ul>
-			${districtLinkHtml(code)}
+			${footer}
 		</div>
 	`
 }
 
-function districtStyle(feature, fillByCode) {
-	const code = codeForFeature(feature, codeFromContinentalName)
-	const list = code ? fillByCode.get(code) : null
-	const worst = list ? worstLevelId(list) : null
-	const fill = worst ? LEVELS[worst].fill : '#ffffff'
+function districtPopupHtml(title, warnings, emptyText, code) {
+	return warningsPopupHtml(title, warnings, emptyText, { footer: districtLinkHtml(code) })
+}
+
+// Map idAreaAviso → its warnings.
+function warningsByArea(warnings) {
+	const map = new Map()
+	for (const w of warnings) {
+		const list = map.get(w.idAreaAviso)
+		if (list) list.push(w)
+		else map.set(w.idAreaAviso, [w])
+	}
+	return map
+}
+
+// Path style of an area at its worst level (null = no warning).
+function levelStyle(worst) {
 	return {
-		fillColor: fill,
+		fillColor: worst ? LEVELS[worst].fill : '#ffffff',
 		fillOpacity: worst ? 0.55 : 0.15,
 		color: worst ? LEVELS[worst].fill : '#94a3b8',
 		weight: worst ? 1 : 0.5,
 		opacity: worst ? 0.9 : 0.5,
 	}
+}
+
+function districtStyle(feature, fillByCode) {
+	const code = codeForFeature(feature, codeFromContinentalName)
+	const list = code ? fillByCode.get(code) : null
+	return levelStyle(list ? worstLevelId(list) : null)
 }
 
 // `fillByCode` colours the polygons (no sea-state warnings where the sea band
@@ -184,7 +208,7 @@ function typesWithLevel(list) {
 		.map(([type, level]) => ({ type, level }))
 }
 
-function warningIcon(items) {
+function warningIcon(items, className = '') {
 	const shown = items.slice(0, MAX_ICONS)
 	const extra = items.length - shown.length
 	const cells = shown.map(({ type, level }) => {
@@ -197,16 +221,42 @@ function warningIcon(items) {
 	const width = shown.length * ICON_PX + (shown.length - 1) * ICON_GAP + (extra > 0 ? 24 : 0) + 6
 	const height = ICON_PX + 6
 	return L.divIcon({
-		className: '',
+		className,
 		html: `<div style="display:flex;gap:${ICON_GAP}px;padding:3px;background:rgb(var(--surface));border-radius:9px;box-shadow:0 1px 4px rgba(15,23,42,.35)">${cells.join('')}</div>`,
 		iconSize: [width, height],
 		iconAnchor: [width / 2, height / 2],
 	})
 }
 
-function WarningIconsLayer({ geojson, warningsByCode, bounds, emptyText }) {
+// "Vento (laranja), Precipitação (amarelo)".
+function typesSummary(items) {
+	return items
+		.map(({ type, level }) => `${warningTypeMeta(type).label ?? type} (${levelMeta(level).label.toLowerCase()})`)
+		.join(', ')
+}
+
+// Markers [{ key, pos, icon, name, suffix, summary, popup }], hidden below
+// MIN_ICON_ZOOM.
+function IconPills({ markers }) {
 	const map = useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
 	const [zoom, setZoom] = useState(() => map.getZoom())
+
+	if (zoom < MIN_ICON_ZOOM) return null
+
+	return markers.map((m) => (
+		<Marker key={m.key} position={m.pos} icon={m.icon} riseOnHover>
+			<Tooltip direction="top" offset={[0, -14]}>
+				<strong>{m.name}</strong>
+				{m.suffix}: {m.summary}
+			</Tooltip>
+			<Popup>
+				<div dangerouslySetInnerHTML={{ __html: m.popup }} />
+			</Popup>
+		</Marker>
+	))
+}
+
+function WarningIconsLayer({ geojson, warningsByCode, bounds, emptyText }) {
 	const anchors = useMemo(() => areaAnchors(geojson), [geojson])
 	const markers = useMemo(() => {
 		const out = []
@@ -216,30 +266,152 @@ function WarningIconsLayer({ geojson, warningsByCode, bounds, emptyText }) {
 			if (!pos || !pointInBounds(pos[1], pos[0], bounds)) continue
 			const items = typesWithLevel(list)
 			out.push({
-				code,
+				key: code,
 				pos,
 				icon: warningIcon(items),
-				summary: items
-					.map(({ type, level }) => `${warningTypeMeta(type).label ?? type} (${levelMeta(level).label.toLowerCase()})`)
-					.join(', '),
+				name: area?.name ?? code,
+				suffix: '',
+				summary: typesSummary(items),
 				popup: districtPopupHtml(area?.name ?? code, list, emptyText, code),
 			})
 		}
 		return out
 	}, [warningsByCode, anchors, bounds, emptyText])
 
-	if (zoom < MIN_ICON_ZOOM) return null
+	return <IconPills markers={markers} />
+}
 
-	return markers.map((m) => (
-		<Marker key={m.code} position={m.pos} icon={m.icon} riseOnHover>
-			<Tooltip direction="top" offset={[0, -14]}>
-				<strong>{IPMA_AREAS[m.code]?.name ?? m.code}</strong>: {m.summary}
-			</Tooltip>
-			<Popup>
-				<div dangerouslySetInnerHTML={{ __html: m.popup }} />
-			</Popup>
-		</Marker>
-	))
+// --- Spain (AEMET) --------------------------------------------------------
+// Every peninsular AEMET zone (public/data/es-zones.geojson, clipped against
+// Portugal): land zones in their own pane under the overlay pane (the
+// Portuguese polygons stay on top), a light grey tint + stone border without a warning and
+// the district colours with one; coastal zones (`…C`) only with a warning,
+// with the sea-band style in their own pane `es-sea` at the sea bands'
+// z-index (the `sea-bands` pane holds only Portugal's bands). Paths carry the classes
+// `es-zone es-zone-<code>`. Only the «Avisos em Espanha» toggle drives them.
+// Their icon pills live in the «Ícones dos avisos» overlay and show only
+// while «Avisos em Espanha» is on too (SpainIconsLayer).
+
+const ES_PANE_Z = 395
+// Dark mode lightens the border (index.css, `.es-zone-empty`): stone-600
+// disappears on the inverted tiles.
+const ES_EMPTY_STYLE = { fillColor: '#a8a29e', fillOpacity: 0.08, color: '#57534e', weight: 1, opacity: 0.8 }
+const ES_OVERLAY = 'Avisos em Espanha'
+const ES_EMPTY_TEXT = 'Sem avisos da AEMET neste período.'
+
+function spainPopupHtml(name, warnings) {
+	return warningsPopupHtml(`${name} (Espanha)`, warnings, ES_EMPTY_TEXT, {
+		text: displayText,
+		detail: (w) =>
+			[parameterText(w) && `Limiar: ${parameterText(w)}`, probabilityText(w) && `Probabilidade: ${probabilityText(w)}`]
+				.filter(Boolean)
+				.map((line) => `<p class="text-[10px] text-gray-500 mt-0.5 mb-0">${esc(line)}</p>`)
+				.join(''),
+		footer: '<p class="text-[10px] text-gray-400 mt-2 mb-0">Fonte: AEMET</p>',
+	})
+}
+
+const featureCollection = (features) => ({ type: 'FeatureCollection', features })
+
+// Remount key of the Spanish layers (as DistrictLayer's): every field the
+// paths, tooltips and popups show, so a refresh that edits a warning
+// (end, text, threshold…) rebuilds them.
+function spainKey(byCode) {
+	const parts = []
+	for (const [code, list] of byCode) {
+		const ws = list.map((w) => [w.awarenessLevelID, w.awarenessTypeName, w.startTime, w.endTime, w.text, w.parameter, w.probability].join('~'))
+		parts.push(`${code}:${ws.join(',')}`)
+	}
+	return parts.sort().join('|')
+}
+
+function SpainLayer({ zones, warnings }) {
+	const byCode = useMemo(() => warningsByArea(warnings), [warnings])
+	const land = useMemo(() => featureCollection((zones?.features ?? []).filter((f) => !f.properties?.coastal)), [zones])
+	const sea = useMemo(
+		() => featureCollection((zones?.features ?? []).filter((f) => f.properties?.coastal && byCode.has(f.properties.code))),
+		[zones, byCode]
+	)
+	const key = useMemo(() => spainKey(byCode), [byCode])
+	const landStyle = useMemo(
+		() => (feature) => {
+			const code = feature.properties.code
+			const list = byCode.get(code)
+			return list
+				? { ...levelStyle(worstLevelId(list)), className: `es-zone es-zone-${code}` }
+				: { ...ES_EMPTY_STYLE, className: `es-zone es-zone-empty es-zone-${code}` }
+		},
+		[byCode]
+	)
+	const seaStyle = useMemo(
+		() => (feature) => {
+			const code = feature.properties.code
+			return { ...seaBandStyle(worstLevelId(byCode.get(code) ?? [])), className: `es-zone es-zone-${code}` }
+		},
+		[byCode]
+	)
+	const onEachFeature = useMemo(
+		() => (feature, layer) => {
+			const { code, name } = feature.properties
+			const list = byCode.get(code)
+			const summary = list ? typesSummary(typesWithLevel(list)) : 'sem avisos'
+			layer.bindTooltip(`<strong>${esc(name ?? code)}</strong> (Espanha): ${esc(summary)}`, { sticky: true })
+			layer.bindPopup(spainPopupHtml(name ?? code, list))
+		},
+		[byCode]
+	)
+	return (
+		<>
+			{/* es-zones / es-sea: created once per map and kept mounted. Don't
+			    unmount and remount them on the same map: Leaflet keeps a
+			    renderer per pane (map._paneRenderers), which react-leaflet's
+			    <Pane> only clears through private fields, and a second <Pane>
+			    with a name still present throws. */}
+			<Pane name="es-zones" style={{ zIndex: ES_PANE_Z }}>
+				<GeoJSON key={key} data={land} style={landStyle} onEachFeature={onEachFeature} />
+			</Pane>
+			<Pane name="es-sea" style={{ zIndex: SEA_PANE_Z }}>
+				{sea.features.length > 0 && (
+					<GeoJSON key={`sea|${key}`} data={sea} style={seaStyle} onEachFeature={onEachFeature} />
+				)}
+			</Pane>
+		</>
+	)
+}
+
+// Spanish icon pills, rendered inside the «Ícones dos avisos» overlay and
+// only while the «Avisos em Espanha» overlay is on (checked by default;
+// followed through the map's overlayadd / overlayremove events).
+function SpainIconsLayer({ zones, warnings }) {
+	const [spainOn, setSpainOn] = useState(true)
+	useMapEvents({
+		overlayadd: (e) => e.name === ES_OVERLAY && setSpainOn(true),
+		overlayremove: (e) => e.name === ES_OVERLAY && setSpainOn(false),
+	})
+	const markers = useMemo(() => {
+		const byCode = warningsByArea(warnings)
+		const out = []
+		for (const f of zones?.features ?? []) {
+			const { code, name, anchor } = f.properties ?? {}
+			const list = byCode.get(code)
+			if (!list || !Array.isArray(anchor)) continue
+			const items = typesWithLevel(list)
+			out.push({
+				// Content in the key: a refresh that changes it rebuilds the marker.
+				key: `es-${code}|${spainKey(new Map([[code, list]]))}`,
+				pos: anchor,
+				icon: warningIcon(items, `es-pill es-pill-${code}`),
+				name: name ?? code,
+				suffix: ' (Espanha)',
+				summary: typesSummary(items),
+				popup: spainPopupHtml(name ?? code, list),
+			})
+		}
+		return out
+	}, [zones, warnings])
+
+	if (!spainOn) return null
+	return <IconPills markers={markers} />
 }
 
 function ObservationList({ obs }) {
@@ -315,16 +487,11 @@ export default function WarningsMap({
 	overlays = null,
 	// Sea bands of this map's region (FeatureCollection with properties.code), or null.
 	seaBands = null,
+	// Spain layer (continental map only): { zones: es-zones FeatureCollection,
+	// warnings: AEMET warnings of the selected period }, or null.
+	spain = null,
 }) {
-	const warningsByCode = useMemo(() => {
-		const map = new Map()
-		for (const w of warnings) {
-			const list = map.get(w.idAreaAviso)
-			if (list) list.push(w)
-			else map.set(w.idAreaAviso, [w])
-		}
-		return map
-	}, [warnings])
+	const warningsByCode = useMemo(() => warningsByArea(warnings), [warnings])
 
 	// Sea-state warnings shade only the sea where this map draws the area's band.
 	const fillByCode = useMemo(
@@ -375,6 +542,13 @@ export default function WarningsMap({
 							/>
 						</LayerGroup>
 					</LayersControl.Overlay>
+					{spain && (
+						<LayersControl.Overlay checked name={ES_OVERLAY}>
+							<LayerGroup>
+								<SpainLayer zones={spain.zones} warnings={spain.warnings} />
+							</LayerGroup>
+						</LayersControl.Overlay>
+					)}
 					<LayersControl.Overlay checked name="Ícones dos avisos">
 						<LayerGroup>
 							<WarningIconsLayer
@@ -383,6 +557,7 @@ export default function WarningsMap({
 								bounds={bounds}
 								emptyText={emptyText}
 							/>
+							{spain && <SpainIconsLayer zones={spain.zones} warnings={spain.warnings} />}
 						</LayerGroup>
 					</LayersControl.Overlay>
 					<LayersControl.Overlay checked={stationsChecked} name="Estações meteorológicas">
@@ -399,7 +574,7 @@ export default function WarningsMap({
 					{overlays}
 				</LayersControl>
 			</MapContainer>
-			{showLegend && <MapLegend />}
+			{showLegend && <MapLegend showSpain={!!spain} />}
 		</div>
 	)
 }

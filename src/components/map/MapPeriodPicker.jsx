@@ -1,10 +1,22 @@
 import { levelMeta, worstLevelId } from '../../data/levels.js'
 import { warningsInPeriod } from '../../utils/timeline.js'
 
-function Tab({ period, warnings, isSelected, onSelect }) {
+const count = (list) => new Set(list.map((w) => w.idAreaAviso)).size
+
+// "3 regiões · 5 zonas em Espanha · laranja" — only the parts that exist.
+function badgeText(areas, zones, level) {
+	const parts = []
+	if (areas > 0) parts.push(`${areas} ${areas === 1 ? 'região' : 'regiões'}`)
+	if (zones > 0) parts.push(`${zones} ${zones === 1 ? 'zona' : 'zonas'} em Espanha`)
+	if (parts.length === 0) return 'Sem avisos'
+	return [...parts, level.label.toLowerCase()].join(' · ')
+}
+
+function Tab({ period, warnings, spainWarnings, isSelected, onSelect }) {
 	const list = warningsInPeriod(warnings, period)
-	const worst = worstLevelId(list)
-	const areas = new Set(list.map((w) => w.idAreaAviso)).size
+	const spain = warningsInPeriod(spainWarnings, period)
+	// Worst level over both countries.
+	const worst = worstLevelId([...list, ...spain])
 	const level = levelMeta(worst)
 
 	return (
@@ -35,16 +47,14 @@ function Tab({ period, warnings, isSelected, onSelect }) {
 					aria-hidden
 				/>
 				<span className={isSelected ? 'text-gray-200' : 'text-gray-600'}>
-					{areas === 0
-						? 'Sem avisos'
-						: `${areas} ${areas === 1 ? 'região' : 'regiões'} · ${level.label.toLowerCase()}`}
+					{badgeText(count(list), count(spain), level)}
 				</span>
 			</span>
 		</button>
 	)
 }
 
-export default function MapPeriodPicker({ periods, warnings, selected, onSelect }) {
+export default function MapPeriodPicker({ periods, warnings, spainWarnings = [], selected, onSelect }) {
 	return (
 		<div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" role="group" aria-label="Período">
 			{periods.map((p) => (
@@ -52,6 +62,7 @@ export default function MapPeriodPicker({ periods, warnings, selected, onSelect 
 					key={p.key}
 					period={p}
 					warnings={warnings}
+					spainWarnings={spainWarnings}
 					isSelected={p.key === selected}
 					onSelect={onSelect}
 				/>

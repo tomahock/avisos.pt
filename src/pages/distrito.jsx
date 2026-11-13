@@ -8,6 +8,7 @@ import ShareButtons from '../components/share/ShareButtons.jsx'
 import StateError from '../components/warnings/StateError.jsx'
 import StateLoading from '../components/warnings/StateLoading.jsx'
 import WarningCard from '../components/warnings/WarningCard.jsx'
+import BorderWarnings from '../components/district/BorderWarnings.jsx'
 import Breadcrumb from '../components/district/Breadcrumb.jsx'
 import DistrictTimeline from '../components/district/DistrictTimeline.jsx'
 import OtherAreas from '../components/district/OtherAreas.jsx'
@@ -119,6 +120,7 @@ function District({ code }) {
 					</div>
 				)}
 
+				<BorderWarnings code={code} />
 				<DistrictIncidents code={code} />
 				<MadeiraOccurrences code={code} />
 				<DistrictHistory code={code} />

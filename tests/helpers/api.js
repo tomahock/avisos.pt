@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { vi } from 'vitest'
 
 import { makeFixtures } from '../fixtures/data.js'
 import { fogosRoute } from '../fixtures/fogos.js'
+import * as aemetWarnings from '../../functions/api/aemet/warnings.js'
 import * as fma from '../../functions/api/incidents/fma.js'
 import * as madeiraEvent from '../../functions/api/madeira/event.js'
 import * as madeiraOccurrences from '../../functions/api/madeira/occurrences.js'
@@ -15,6 +18,7 @@ import * as stationObs from '../../functions/api/stations/[id]/observations.js'
 import * as warnings from '../../functions/api/warnings.js'
 import * as history from '../../functions/api/warnings/history.js'
 
+const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../public')
 const UPSTREAM = 'http://fogos.test'
 const ENV = { FOGOS_API_KEY: 'test', FOGOS_API_BASE: UPSTREAM }
 
@@ -22,6 +26,7 @@ const ENV = { FOGOS_API_KEY: 'test', FOGOS_API_BASE: UPSTREAM }
 function handlerFor(pathname) {
 	const fixed = {
 		'/api/warnings': warnings,
+		'/api/aemet/warnings': aemetWarnings,
 		'/api/warnings/history': history,
 		'/api/stations': stations,
 		'/api/observations': observations,
@@ -65,7 +70,9 @@ export function mockApi({ now = new Date(), fx = makeFixtures(now), overrides = 
 			return json(override)
 		}
 		if (u.pathname.startsWith('/data/')) {
-			return json(JSON.parse(readFileSync(new URL(`../../public${u.pathname}`, import.meta.url), 'utf8')))
+			// Not `new URL(`…${path}`, import.meta.url)`: Vite rewrites that
+			// pattern into an asset glob, which yields "undefined" here.
+			return json(JSON.parse(readFileSync(join(PUBLIC_DIR, u.pathname), 'utf8')))
 		}
 		const h = handlerFor(u.pathname)
 		if (!h) return new Response('<!doctype html>', { status: 404 })

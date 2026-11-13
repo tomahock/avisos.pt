@@ -13,8 +13,10 @@ import { usePageTitle } from '../utils/pageTitle.js'
 import { PAGE_META } from '../utils/share.js'
 import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
 import { bandsForRegion } from '../utils/seaBands.js'
+import { mapEmptyText } from '../utils/mapText.js'
 import { occurrenceWindow, occurrencesBetween, parishGroups, srpcFresh, totalCount } from '../utils/madeira.js'
 import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
+import { useAemetWarnings } from '../hooks/useAemetWarnings.js'
 import { useMadeiraSrpc } from '../hooks/useMadeiraSrpc.js'
 
 const REGIONS = [
@@ -68,6 +70,7 @@ export default function MapPage() {
 	const [geoContinental, setGeoContinental] = useState(null)
 	const [geoArquipelagos, setGeoArquipelagos] = useState(null)
 	const [seaBands, setSeaBands] = useState(null)
+	const [spainZones, setSpainZones] = useState(null)
 	const [error, setError] = useState(null)
 	const [updatedAt, setUpdatedAt] = useState(null)
 	const [reloadKey, setReloadKey] = useState(0)
@@ -77,6 +80,10 @@ export default function MapPage() {
 	// SRPC, IP-RAM occurrences (Madeira) — optional layer, never blocks the
 	// page; polled on its own every 2 min like the district pages.
 	const srpc = useMadeiraSrpc({ event: false })
+	// AEMET (Spain) — never blocks the map. Spain counts (picker, badges,
+	// empty texts) only while the Spain layer is drawable: zones and
+	// warnings both loaded; otherwise (loading or failed) Portugal only.
+	const { warnings: aemetWarnings } = useAemetWarnings()
 	const occLoadedAt = srpc.loadedAt.occurrences
 	const occFailed = srpc.failed.occurrences
 
@@ -109,6 +116,11 @@ export default function MapPage() {
 			.then(setSeaBands)
 			.catch(() => {})
 
+		// AEMET zones (Spain layer) — optional too: no zones, no Spain layer.
+		fetchJson('/data/es-zones.geojson', ctrl.signal)
+			.then(setSpainZones)
+			.catch(() => {})
+
 		fetchJson('/api/stations', ctrl.signal)
 			.then(setStations)
 			.catch(() => {})
@@ -128,7 +140,13 @@ export default function MapPage() {
 		setReloadKey((k) => k + 1)
 	}, [])
 
-	const periods = useMemo(() => mapPeriods(warnings ?? [], now), [warnings, now])
+	const spainWarnings = spainZones && aemetWarnings ? aemetWarnings : null
+
+	// Days come from PT + ES: a day with only Spanish warnings gets a tab.
+	const periods = useMemo(
+		() => mapPeriods([...(warnings ?? []), ...(spainWarnings ?? [])], now),
+		[warnings, spainWarnings, now]
+	)
 	// Unknown / stale ?dia= (e.g. a shared link from yesterday) falls back to "Agora".
 	const period = periods.find((p) => p.key === searchParams.get('dia')) ?? periods[0]
 	const selectPeriod = useCallback(
@@ -139,6 +157,8 @@ export default function MapPage() {
 		() => (warnings ? warningsInPeriod(warnings, period) : []),
 		[warnings, period]
 	)
+	// Spanish warnings of the selected period (empty texts; the Spain layer).
+	const periodSpain = useMemo(() => warningsInPeriod(spainWarnings ?? [], period), [spainWarnings, period])
 	const isNow = period.key === 'agora'
 	// Occurrences are past events: "Agora" = last 24 h, today = since
 	// midnight, future days = none (the layer stays, empty, with a note).
@@ -151,7 +171,15 @@ export default function MapPage() {
 		() => (occurrences && occWindow ? occurrencesBetween(occurrences, occWindow.from, occWindow.to) : []),
 		[occurrences, occWindow]
 	)
-	const emptyText = isNow ? 'Sem avisos em vigor.' : 'Sem avisos neste período.'
+	// The map's empty texts speak of Portugal; a period with only Spanish
+	// warnings must not read as "no warnings at all".
+	const emptyText = mapEmptyText({ isNow, pt: periodWarnings.length, es: periodSpain.length })
+	// Spain layer of the continental map: needs both the zones and AEMET's
+	// warnings (either failing → Portugal only; spainWarnings is null then).
+	const spain = useMemo(
+		() => (spainWarnings ? { zones: spainZones, warnings: periodSpain } : null),
+		[spainZones, spainWarnings, periodSpain]
+	)
 
 	const regionData = useMemo(() => {
 		if (!geoContinental || !geoArquipelagos) return null
@@ -201,6 +229,7 @@ export default function MapPage() {
 				<MapPeriodPicker
 					periods={periods}
 					warnings={warnings}
+					spainWarnings={spainWarnings ?? []}
 					selected={period.key}
 					onSelect={selectPeriod}
 				/>
@@ -216,6 +245,7 @@ export default function MapPage() {
 					<WarningsMap
 						geojson={regionData.continental}
 						seaBands={regionSea?.continental}
+						spain={spain}
 						warnings={periodWarnings}
 						emptyText={emptyText}
 						stations={stations}

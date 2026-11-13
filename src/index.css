@@ -130,6 +130,11 @@
 .dark .leaflet-control-layers-toggle {
 	filter: invert(1);
 }
+/* Spanish zones without a warning: the stone-600 border (WarningsMap
+   ES_EMPTY_STYLE) vanishes on the dark tiles; stone-400 instead. */
+.dark .leaflet-es-zones-pane path.es-zone-empty {
+	stroke: #a8a29e;
+}
 
 /* White rings around chart markers follow the card surface (see marks spec:
    2px surface ring), so they disappear into the card in both themes. */
