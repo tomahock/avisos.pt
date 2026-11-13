@@ -84,6 +84,25 @@ export function makeFixtures(now = new Date()) {
 		w('MPS', 'Agitação Marítima', 'orange', 5, 15, 'Ondas de noroeste com 3 a 4 metros.'),
 	]
 
+	// AEMET (Spain) via FogosPT /v2/warnings/aemet?peninsula=1: the IPMA
+	// shape (awarenessTypeName already in Portuguese) + AEMET's own fields.
+	const aw = (idAreaAviso, areaName, type, level, from, to, phenomenon, parameter, probability = '40%-70%') => ({
+		...w(idAreaAviso, type, level, from, to, `${parameter.trim()}.`),
+		areaName,
+		phenomenon,
+		parameter,
+		probability,
+	})
+	const aemetWarnings = [
+		aw('674901', 'Sanabria', 'Vento', 'orange', -1, 10, 'VI', 'Rachas máximas: 90 km/h', '40%-70%'),
+		aw('713603C', 'Costa - Miño de Pontevedra', 'Agitação Marítima', 'yellow', -2, 20, 'CO', 'Costeros: '),
+		// Starts after the last PT endTime (FAR, +30 h): its day tab exists only because of Spain.
+		aw('713202', 'Miño de Ourense', 'Precipitação', 'yellow', 54, 60, 'PR', 'Precipitación acumulada en 12 horas: 40 mm'),
+		aw('612103', 'Litoral de Huelva', 'Polvo en suspensión', 'yellow', -1, 8, 'VS', 'Visibilidad mínima: 3000 m'),
+		// Already ended: the proxy must drop it.
+		aw('701001', 'Norte de Cáceres', 'Precipitação', 'yellow', -30, -1, 'PR', 'Precipitación acumulada en 12 horas: 40 mm'),
+	]
+
 	const stations = STATIONS.map((s) => ({
 		type: 'Feature',
 		properties: { idEstacao: s.id, localEstacao: s.name },
@@ -250,5 +269,5 @@ export function makeFixtures(now = new Date()) {
 		source: 'SRPC-RAM (Preventech) · IPMA · ECMWF',
 	}
 
-	return { now, warnings, stations, observations, stationSeries, stationDaily, history, incidents, madeiraEvent, madeiraOccurrences }
+	return { now, warnings, aemetWarnings, stations, observations, stationSeries, stationDaily, history, incidents, madeiraEvent, madeiraOccurrences }
 }

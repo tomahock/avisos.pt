@@ -4,6 +4,7 @@ import { vi } from 'vitest'
 
 import { makeFixtures } from '../fixtures/data.js'
 import { fogosRoute } from '../fixtures/fogos.js'
+import * as aemetWarnings from '../../functions/api/aemet/warnings.js'
 import * as fma from '../../functions/api/incidents/fma.js'
 import * as madeiraEvent from '../../functions/api/madeira/event.js'
 import * as madeiraOccurrences from '../../functions/api/madeira/occurrences.js'
@@ -22,6 +23,7 @@ const ENV = { FOGOS_API_KEY: 'test', FOGOS_API_BASE: UPSTREAM }
 function handlerFor(pathname) {
 	const fixed = {
 		'/api/warnings': warnings,
+		'/api/aemet/warnings': aemetWarnings,
 		'/api/warnings/history': history,
 		'/api/stations': stations,
 		'/api/observations': observations,

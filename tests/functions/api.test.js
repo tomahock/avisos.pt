@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
+import { makeFixtures } from '../fixtures/data.js'
+import * as aemetWarnings from '../../functions/api/aemet/warnings.js'
 import * as fma from '../../functions/api/incidents/fma.js'
 import * as madeiraEvent from '../../functions/api/madeira/event.js'
 import * as madeiraOccurrences from '../../functions/api/madeira/occurrences.js'
@@ -42,6 +44,21 @@ describe('/api/warnings', () => {
 	test('a non-array upstream becomes []', async () => {
 		upstream = { error: 'x' }
 		expect(await (await call(warnings)).json()).toEqual([])
+	})
+})
+
+describe('/api/aemet/warnings', () => {
+	test('proxies the peninsula warnings and drops ended ones', async () => {
+		upstream = makeFixtures(new Date()).aemetWarnings
+		const res = await call(aemetWarnings)
+		expect(calledPath()).toBe('/v2/warnings/aemet?peninsula=1')
+		const ids = (await res.json()).map((w) => w.idAreaAviso)
+		expect(ids).not.toContain('701001')
+		expect(ids).toEqual(['674901', '713603C', '713202', '612103'])
+	})
+	test('upstream error → 502', async () => {
+		fetchMock.mockResolvedValueOnce(new Response('x', { status: 503 }))
+		expect((await call(aemetWarnings)).status).toBe(502)
 	})
 })
 
