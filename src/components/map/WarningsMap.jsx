@@ -281,7 +281,7 @@ function WarningIconsLayer({ geojson, warningsByCode, bounds, emptyText }) {
 // --- Spain (AEMET) --------------------------------------------------------
 // Every peninsular AEMET zone (public/data/es-zones.geojson, clipped against
 // Portugal): land zones in their own pane under the overlay pane (the
-// Portuguese polygons stay on top), a light outline without a warning and
+// Portuguese polygons stay on top), a light grey tint + stone border without a warning and
 // the district colours with one; coastal zones (`…C`) only with a warning,
 // with the sea-band style in their own pane `es-sea` at the sea bands'
 // z-index (the `sea-bands` pane holds only Portugal's bands). Paths carry the classes
@@ -290,7 +290,9 @@ function WarningIconsLayer({ geojson, warningsByCode, bounds, emptyText }) {
 // while «Avisos em Espanha» is on too (SpainIconsLayer).
 
 const ES_PANE_Z = 395
-const ES_EMPTY_STYLE = { fillColor: '#ffffff', fillOpacity: 0.03, color: '#78716c', weight: 0.8, opacity: 0.75, dashArray: '3 3' }
+// Dark mode lightens the border (index.css, `.es-zone-empty`): stone-600
+// disappears on the inverted tiles.
+const ES_EMPTY_STYLE = { fillColor: '#a8a29e', fillOpacity: 0.08, color: '#57534e', weight: 1, opacity: 0.8 }
 const ES_OVERLAY = 'Avisos em Espanha'
 const ES_EMPTY_TEXT = 'Sem avisos da AEMET neste período.'
 
@@ -331,7 +333,9 @@ function SpainLayer({ zones, warnings }) {
 		() => (feature) => {
 			const code = feature.properties.code
 			const list = byCode.get(code)
-			return { ...(list ? levelStyle(worstLevelId(list)) : ES_EMPTY_STYLE), className: `es-zone es-zone-${code}` }
+			return list
+				? { ...levelStyle(worstLevelId(list)), className: `es-zone es-zone-${code}` }
+				: { ...ES_EMPTY_STYLE, className: `es-zone es-zone-empty es-zone-${code}` }
 		},
 		[byCode]
 	)

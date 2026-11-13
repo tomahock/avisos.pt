@@ -32,7 +32,7 @@ export default function MapLegend({ showSpain = false }) {
 			</p>
 			{showSpain && (
 				<p className="mt-1.5 mb-0 flex items-center gap-2 border-t border-gray-200 pt-1.5 text-gray-600">
-					<span className="inline-block w-3 h-3 rounded-sm border border-dashed border-gray-400" aria-hidden />
+					<span className="inline-block w-3 h-3 rounded-sm border border-[#57534e] bg-[#a8a29e]/35 dark:border-[#a8a29e]" aria-hidden />
 					<span>Espanha: avisos da AEMET</span>
 				</p>
 			)}
