@@ -1,7 +1,8 @@
 // «Do outro lado da fronteira» (#56): AEMET warnings of the Spanish zones
 // bordering a district, as full cards grouped by zone. Fixtures
 // (tests/fixtures/data.js `aemetWarnings`): Sanabria (BGC) orange Vento
-// "Rachas máximas: 90 km/h" 40%-70%; Costa - Miño de Pontevedra (VCT)
+// "Rachas máximas: 90 km/h" 40%-70%, text "Rachas máximas: 90 km/h. Viento
+// del noroeste."; Costa - Miño de Pontevedra (VCT)
 // coastal without a value ("Costeros: "); Litoral de Huelva (FAR) "Polvo en
 // suspensión", a type IPMA doesn't have.
 
@@ -36,6 +37,9 @@ describe('border warnings section', () => {
 		await within(g).findByText('Vento')
 		expect(within(g).getByText('Aviso Laranja')).toBeInTheDocument()
 		expect(within(g).getByText('Limiar: Rachas máximas: 90 km/h')).toBeInTheDocument()
+		// AEMET's text repeats the threshold first: shown once, as «Limiar».
+		expect(within(g).getByText('Viento del noroeste.')).toBeInTheDocument()
+		expect(within(g).getAllByText(/Rachas máximas/)).toHaveLength(1)
 		expect(within(g).getByText('Probabilidade: 40–70 %')).toBeInTheDocument()
 		expect(g).toHaveTextContent('Fonte: AEMET')
 		// Not an IPMA warning: no permalink, nothing to share.
@@ -84,6 +88,8 @@ describe('border warnings section', () => {
 		const g = await group(s, 'Litoral de Huelva')
 		expect(await within(g).findByText('Polvo en suspensión')).toBeInTheDocument()
 		expect(within(g).getByText('Limiar: Visibilidad mínima: 3000 m')).toBeInTheDocument()
+		// The text is only the threshold ("Visibilidad mínima: 3000 m."): no text paragraph.
+		expect(within(g).getAllByText(/Visibilidad mínima/)).toHaveLength(1)
 	})
 
 	test('section_error_keeps_page: AEMET down → message + retry, PT warnings still there', async () => {

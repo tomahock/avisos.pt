@@ -38,6 +38,9 @@ test('popup says Espanha and AEMET', async ({ page }) => {
 	await expect(popup).toContainText('Sanabria (Espanha)')
 	await expect(popup).toContainText('Vento')
 	await expect(popup).toContainText('Limiar: Rachas máximas: 90 km/h')
+	// The text without the threshold it starts with: shown once.
+	await expect(popup).toContainText('Viento del noroeste.')
+	await expect(popup.getByText(/Rachas máximas/)).toHaveCount(1)
 	await expect(popup).toContainText('Probabilidade: 40–70 %')
 	await expect(popup).toContainText('Fonte: AEMET')
 	await expect(popup).not.toContainText('Ver página de')

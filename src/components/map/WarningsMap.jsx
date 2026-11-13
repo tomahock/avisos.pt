@@ -29,7 +29,7 @@ import {
 	formatWind,
 } from '../../utils/format.js'
 import { landFillWarnings, seaBandStyle, seaWarningsByCode } from '../../utils/seaBands.js'
-import { parameterText, probabilityText } from '../../utils/spain.js'
+import { displayText, parameterText, probabilityText } from '../../utils/aemetText.js'
 import { districtPath } from '../../utils/share.js'
 import { stationPath } from '../../utils/stations.js'
 import { pointInBounds, stationInBounds } from './bounds.js'
@@ -47,9 +47,10 @@ function districtLinkHtml(code) {
 	return `<a href="${esc(districtPath(code))}" class="inline-block mt-2 text-xs font-semibold text-primary-700">Ver página de ${esc(IPMA_AREAS[code]?.name ?? code)} →</a>`
 }
 
-// Popup of an area: its warnings (or `emptyText`), `detail(w)` = extra
-// lines per warning, `footer` = HTML after the list.
-function warningsPopupHtml(title, warnings, emptyText, { detail = () => '', footer = '' } = {}) {
+// Popup of an area: its warnings (or `emptyText`), `text(w)` = the
+// warning's text line (none when null), `detail(w)` = extra lines per
+// warning, `footer` = HTML after the list.
+function warningsPopupHtml(title, warnings, emptyText, { text = (w) => w.text ?? '', detail = () => '', footer = '' } = {}) {
 	if (!warnings || warnings.length === 0) {
 		return `<div class="min-w-[200px]"><p class="font-bold text-gray-900 m-0">${esc(title)}</p><p class="text-xs text-gray-500 mt-1 mb-0">${esc(emptyText)}</p>${footer}</div>`
 	}
@@ -57,12 +58,14 @@ function warningsPopupHtml(title, warnings, emptyText, { detail = () => '', foot
 		.map((w) => {
 			const lvl = levelMeta(w.awarenessLevelID)
 			const type = warningTypeMeta(w.awarenessTypeName)
+			const body = text(w)
+			const textLine = body == null ? '' : `<p class="text-xs text-gray-600 mt-0.5 mb-0">${esc(body)}</p>`
 			return `
 				<li class="flex gap-2 items-start">
 					<span class="inline-block w-2 h-2 mt-1.5 rounded-sm" style="background:${lvl.fill}"></span>
 					<div class="min-w-0">
 						<p class="text-sm font-semibold text-gray-900 m-0">${esc(type.label ?? w.awarenessTypeName)}</p>
-						<p class="text-xs text-gray-600 mt-0.5 mb-0">${esc(w.text ?? '')}</p>
+						${textLine}
 						<p class="text-[10px] text-gray-400 mt-0.5 mb-0">${esc(formatWhen(w.startTime))} → ${esc(formatWhen(w.endTime))}</p>${detail(w)}
 					</div>
 				</li>
@@ -298,6 +301,7 @@ const ES_EMPTY_TEXT = 'Sem avisos da AEMET neste período.'
 
 function spainPopupHtml(name, warnings) {
 	return warningsPopupHtml(`${name} (Espanha)`, warnings, ES_EMPTY_TEXT, {
+		text: displayText,
 		detail: (w) =>
 			[parameterText(w) && `Limiar: ${parameterText(w)}`, probabilityText(w) && `Probabilidade: ${probabilityText(w)}`]
 				.filter(Boolean)

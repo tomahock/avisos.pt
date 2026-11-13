@@ -86,15 +86,17 @@ export function makeFixtures(now = new Date()) {
 
 	// AEMET (Spain) via FogosPT /v2/warnings/aemet?peninsula=1: the IPMA
 	// shape (awarenessTypeName already in Portuguese) + AEMET's own fields.
-	const aw = (idAreaAviso, areaName, type, level, from, to, phenomenon, parameter, probability = '40%-70%') => ({
-		...w(idAreaAviso, type, level, from, to, `${parameter.trim()}.`),
+	// AEMET's text starts with the parameter: "<parameter>.", followed by
+	// " <extra>" when given.
+	const aw = (idAreaAviso, areaName, type, level, from, to, phenomenon, parameter, probability = '40%-70%', extra = '') => ({
+		...w(idAreaAviso, type, level, from, to, `${parameter.trim()}.${extra ? ` ${extra}` : ''}`),
 		areaName,
 		phenomenon,
 		parameter,
 		probability,
 	})
 	const aemetWarnings = [
-		aw('674901', 'Sanabria', 'Vento', 'orange', -1, 10, 'VI', 'Rachas máximas: 90 km/h', '40%-70%'),
+		aw('674901', 'Sanabria', 'Vento', 'orange', -1, 10, 'VI', 'Rachas máximas: 90 km/h', '40%-70%', 'Viento del noroeste.'),
 		aw('713603C', 'Costa - Miño de Pontevedra', 'Agitação Marítima', 'yellow', -2, 20, 'CO', 'Costeros: '),
 		// Starts after the last PT endTime (FAR, +30 h): its day tab exists only because of Spain.
 		aw('713202', 'Miño de Ourense', 'Precipitação', 'yellow', 54, 60, 'PR', 'Precipitación acumulada en 12 horas: 40 mm'),

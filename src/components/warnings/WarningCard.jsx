@@ -5,11 +5,12 @@ import { warningTypeMeta } from '../../data/warningTypes.js'
 import TypeIcon from './TypeIcon.jsx'
 import { formatWhen } from '../../utils/format.js'
 import { warningPath } from '../../utils/share.js'
-import { parameterText, probabilityText } from '../../utils/spain.js'
+import { displayText, parameterText, probabilityText } from '../../utils/aemetText.js'
 
 // One warning. `source = 'aemet'` (Spain, «Do outro lado da fronteira»):
-// no permalink (plain title, no «Partilhar»), AEMET's threshold and
-// probability after the text, the source in the footer, and an <h4> title
+// no permalink (plain title, no «Partilhar»), the text without its leading
+// threshold (no paragraph when nothing is left), AEMET's threshold and
+// probability after it, the source in the footer, and an <h4> title
 // (the cards sit under a zone <h3>).
 export default function WarningCard({ warning, source = 'ipma' }) {
 	const level = levelMeta(warning.awarenessLevelID)
@@ -19,6 +20,8 @@ export default function WarningCard({ warning, source = 'ipma' }) {
 	const period = `${formatWhen(warning.startTime)} → ${formatWhen(warning.endTime)}`
 	const parameter = aemet ? parameterText(warning) : null
 	const probability = aemet ? probabilityText(warning) : null
+	// AEMET's text starts with the threshold, shown apart as «Limiar».
+	const text = aemet ? displayText(warning) : warning.text
 
 	return (
 		<article className="flex flex-col bg-surface border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -42,7 +45,7 @@ export default function WarningCard({ warning, source = 'ipma' }) {
 					</p>
 				</div>
 			</div>
-			<p className="px-4 text-sm text-gray-700 leading-relaxed">{warning.text}</p>
+			{(!aemet || text) && <p className="px-4 text-sm text-gray-700 leading-relaxed">{text}</p>}
 			{(parameter || probability) && (
 				<div className="px-4 pt-2 pb-3 text-sm text-gray-600 break-words">
 					{parameter && <p className="m-0">{`Limiar: ${parameter}`}</p>}

@@ -16,6 +16,8 @@ test('Bragança shows the Sanabria card in «Do outro lado da fronteira» @respo
 	await expect(g).toContainText('Vento')
 	await expect(g).toContainText('Aviso Laranja')
 	await expect(g).toContainText('Limiar: Rachas máximas: 90 km/h')
+	await expect(g).toContainText('Viento del noroeste.')
+	await expect(g.getByText(/Rachas máximas/)).toHaveCount(1)
 	await expect(g).toContainText('Fonte: AEMET')
 	await expect(g).toContainText('Zamora')
 	await expect(s).not.toContainText('Partilhar')

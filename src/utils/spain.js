@@ -5,20 +5,7 @@ import { BORDER_ZONE_META, borderZones } from '../data/borderZones.js'
 import { ccaaName, provinceName } from '../data/spainNames.js'
 import { sortWarnings } from './share.js'
 
-// AEMET's parameter ("Rachas máximas: 90 km/h"). Coastal warnings carry no
-// value ("Costeros: ") — a parameter ending in ":" is treated as absent.
-export function parameterText(w) {
-	const p = typeof w?.parameter === 'string' ? w.parameter.trim() : ''
-	return !p || p.endsWith(':') ? null : p
-}
-
-// AEMET's probability band, "40%-70%" → "40–70 %".
-export function probabilityText(w) {
-	const p = typeof w?.probability === 'string' ? w.probability.trim() : ''
-	if (!p) return null
-	const m = p.match(/^(\d+)\s*%?\s*-\s*(\d+)\s*%$/)
-	return m ? `${m[1]}–${m[2]} %` : p
-}
+export { displayText, parameterText, probabilityText } from './aemetText.js'
 
 // Map code → { name, province, ccaa } from es-zones.geojson; province/ccaa
 // are the INE / AEMET codes (names via spainNames.js).
