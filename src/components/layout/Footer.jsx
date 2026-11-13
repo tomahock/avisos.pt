@@ -20,7 +20,9 @@ export default function Footer() {
 					<p className="m-0">
 						<span className="font-semibold text-gray-700">Dados:</span> avisos meteorológicos e estações do{' '}
 						<A href="https://www.ipma.pt">IPMA</A>; ocorrências da <A href="https://www.prociv.gov.pt">ANEPC</A> e, na Madeira, do{' '}
-						<A href="https://www.procivmadeira.pt">SRPC, IP-RAM</A>; através da <A href="https://fogos.pt/pt/api">API do Fogos.pt</A>.
+						<A href="https://www.procivmadeira.pt">SRPC, IP-RAM</A>; avisos de Espanha da{' '}
+						<A href="https://www.aemet.es">AEMET (Agencia Estatal de Meteorología)</A>; através da{' '}
+						<A href="https://fogos.pt/pt/api">API do Fogos.pt</A>.
 						Localização aproximada das ocorrências da Madeira pelo centroide da freguesia (CAOP,{' '}
 						<A href="https://www.dgterritorio.gov.pt">DGT</A>, via Fogos.pt).
 						Limites dos concelhos de{' '}

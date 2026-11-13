@@ -1,7 +1,7 @@
 // Every route of the SPA rendered with the real route table, the real Pages
 // Functions and a fake FogosPT: normal data, no warnings, API down, bad URLs.
 
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 
 import { STATION_ID } from '../fixtures/data.js'
@@ -22,6 +22,14 @@ describe('pages render with normal data', () => {
 		mockApi()
 		renderRoute('/cronologia')
 		await h1('Cronologia dos avisos')
+	})
+	test('footer credits AEMET', async () => {
+		mockApi()
+		renderRoute('/')
+		const footer = await screen.findByRole('contentinfo')
+		const link = within(footer).getByRole('link', { name: 'AEMET (Agencia Estatal de Meteorología)' })
+		expect(link).toHaveAttribute('href', 'https://www.aemet.es')
+		expect(footer).toHaveTextContent(/AEMET \(Agencia Estatal de Meteorología\); através da API do Fogos\.pt/)
 	})
 	test('/cronologia?d=LSB selects a district', async () => {
 		mockApi()

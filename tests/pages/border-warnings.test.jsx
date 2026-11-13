@@ -29,7 +29,7 @@ describe('border warnings section', () => {
 		const s = await section()
 		expect(s).toHaveAccessibleName('Do outro lado da fronteira Espanha')
 		expect(within(s).getByRole('img', { name: 'Espanha' })).toHaveTextContent('🇪🇸')
-		// Region and province names come from es-zones.geojson (fetched apart).
+		// Region and province names come from the static BORDER_ZONE_META (no GeoJSON).
 		expect(await within(s).findByText('Galiza · Castela e Leão')).toBeInTheDocument()
 		const g = await group(s, 'Sanabria')
 		expect(within(g).getByRole('heading', { level: 3 })).toHaveTextContent('Zamora')

@@ -41,6 +41,10 @@ Dados apresentados no site (não fazem parte do repositório)
     centroide da freguesia, calculado pelo Fogos.pt a partir da Carta
     Administrativa Oficial de Portugal (CAOP) da Direção-Geral do Território
     (DGT) — https://www.dgterritorio.gov.pt
+    Avisos meteorológicos de Espanha (mapa e distritos junto à fronteira):
+    AEMET (Agencia Estatal de Meteorología) — https://www.aemet.es — através
+    da API do Fogos.pt. Reutilização livre citando a fonte ("Fonte: AEMET"),
+    nos termos do aviso legal da AEMET.
 
 public/data/pt-continental.geojson
 public/data/pt-arquipelagos.geojson
@@ -48,6 +52,15 @@ public/data/pt-arquipelagos.geojson
     https://github.com/FrancisPais/geojson-portugal-continental e
     https://github.com/FrancisPais/geojson-portugal-arquipelagos.
     Os repositórios de origem não declaram licença.
+
+public/data/es-zones.geojson
+src/data/borderZones.js
+scripts/data/aemet-zones.json
+    Zonas de aviso da AEMET na Península (192), tal como publicadas pela API do
+    Fogos.pt (/v2/warnings/aemet/zones) a partir dos dados da AEMET (Fonte:
+    AEMET), recortadas por scripts/build-spain-zones.mjs pelos limites dos
+    concelhos e pelas faixas de mar abaixo; tabela de zonas vizinhas de cada
+    distrito calculada pelo mesmo script.
 
 public/data/sea-bands.geojson
     Faixas de mar junto à costa (avisos de agitação marítima), calculadas por
