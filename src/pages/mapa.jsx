@@ -13,6 +13,7 @@ import { usePageTitle } from '../utils/pageTitle.js'
 import { PAGE_META } from '../utils/share.js'
 import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
 import { bandsForRegion } from '../utils/seaBands.js'
+import { mapEmptyText } from '../utils/mapText.js'
 import { occurrenceWindow, occurrencesBetween, parishGroups, srpcFresh, totalCount } from '../utils/madeira.js'
 import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
 import { useAemetWarnings } from '../hooks/useAemetWarnings.js'
@@ -69,6 +70,7 @@ export default function MapPage() {
 	const [geoContinental, setGeoContinental] = useState(null)
 	const [geoArquipelagos, setGeoArquipelagos] = useState(null)
 	const [seaBands, setSeaBands] = useState(null)
+	const [spainZones, setSpainZones] = useState(null)
 	const [error, setError] = useState(null)
 	const [updatedAt, setUpdatedAt] = useState(null)
 	const [reloadKey, setReloadKey] = useState(0)
@@ -111,6 +113,11 @@ export default function MapPage() {
 		// Sea strips for Agitação Marítima — optional, never blocks the map.
 		fetchJson('/data/sea-bands.geojson', ctrl.signal)
 			.then(setSeaBands)
+			.catch(() => {})
+
+		// AEMET zones (Spain layer) — optional too: no zones, no Spain layer.
+		fetchJson('/data/es-zones.geojson', ctrl.signal)
+			.then(setSpainZones)
 			.catch(() => {})
 
 		fetchJson('/api/stations', ctrl.signal)
@@ -163,14 +170,13 @@ export default function MapPage() {
 	)
 	// The map's empty texts speak of Portugal; a period with only Spanish
 	// warnings must not read as "no warnings at all".
-	const emptyText =
-		periodWarnings.length === 0 && periodSpain.length > 0
-			? isNow
-				? 'Sem avisos em vigor em Portugal.'
-				: 'Sem avisos em Portugal neste período.'
-			: isNow
-				? 'Sem avisos em vigor.'
-				: 'Sem avisos neste período.'
+	const emptyText = mapEmptyText({ isNow, pt: periodWarnings.length, es: periodSpain.length })
+	// Spain layer of the continental map: needs both the zones and AEMET's
+	// warnings (either failing → Portugal only).
+	const spain = useMemo(
+		() => (spainZones && spainWarnings ? { zones: spainZones, warnings: periodSpain } : null),
+		[spainZones, spainWarnings, periodSpain]
+	)
 
 	const regionData = useMemo(() => {
 		if (!geoContinental || !geoArquipelagos) return null
@@ -236,6 +242,7 @@ export default function MapPage() {
 					<WarningsMap
 						geojson={regionData.continental}
 						seaBands={regionSea?.continental}
+						spain={spain}
 						warnings={periodWarnings}
 						emptyText={emptyText}
 						stations={stations}
