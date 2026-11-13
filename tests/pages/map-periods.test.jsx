@@ -5,7 +5,11 @@
 // end is FAR at +30 h); "Agora"/today also have Sanabria orange, the
 // Pontevedra coast and Huelva yellow.
 
-import { screen, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { mockApi } from '../helpers/api.js'
@@ -18,6 +22,53 @@ beforeEach(() => {
 	vi.setSystemTime(NOW)
 })
 afterEach(() => vi.useRealTimers())
+
+// Not `new URL(…, import.meta.url)`: Vite rewrites it (see tests/helpers/api.js).
+const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../public/data')
+const geojson = (name) =>
+	new Response(readFileSync(join(DATA_DIR, name), 'utf8'), {
+		headers: { 'content-type': 'application/json' },
+	})
+const jsonResponse = (body, status = 200) =>
+	new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+
+// `res` plus a promise settled once the page has consumed it: fetchJson
+// reads `ok` and throws on an error status, or awaits `json()`.
+function watched(res) {
+	let done
+	const consumed = new Promise((r) => (done = r))
+	const proxy = new Proxy(res, {
+		get(target, key) {
+			if (key === 'ok' && !target.ok) done()
+			if (key === 'json') return async () => {
+				const body = await target.json()
+				done()
+				return body
+			}
+			const v = Reflect.get(target, key)
+			return typeof v === 'function' ? v.bind(target) : v
+		},
+	})
+	return [proxy, consumed]
+}
+
+// Overrides that hold the continental GeoJSON (the picker only renders
+// once it has loaded) until every response in `responses` has been
+// consumed: when the picker appears, those results are already in state.
+function gated(responses) {
+	const overrides = {}
+	const consumed = []
+	for (const [path, res] of Object.entries(responses)) {
+		const [proxy, p] = watched(res)
+		overrides[path] = () => proxy
+		consumed.push(p)
+	}
+	overrides['/data/pt-continental.geojson'] = async () => {
+		await Promise.all(consumed)
+		return geojson('pt-continental.geojson')
+	}
+	return overrides
+}
 
 const picker = () => screen.findByRole('group', { name: 'Período' }, { timeout: 3000 })
 const tabs = (g) => within(g).getAllByRole('button')
@@ -45,15 +96,42 @@ describe('/mapa period picker with Spain', () => {
 	})
 
 	test('picker falls back to PT when AEMET fails', async () => {
-		const { fx, calls } = mockApi({ now: NOW, overrides: { '/api/aemet/warnings': 502 } })
+		const { fx, calls } = mockApi({ now: NOW, overrides: gated({ '/api/aemet/warnings': jsonResponse({ error: 'test' }, 502) }) })
 		renderRoute('/mapa')
 		const g = await picker()
-		await waitFor(() => expect(calls.some((u) => u.includes('/api/aemet/warnings'))).toBe(true))
-		await new Promise((r) => setTimeout(r, 50))
+		expect(calls.some((u) => u.includes('/api/aemet/warnings'))).toBe(true)
 		const expected = mapPeriods(fx.warnings, NOW).map((p) => p.main)
 		const got = tabs(g)
 		expect(got).toHaveLength(expected.length)
 		got.forEach((t, i) => expect(t.textContent.startsWith(expected[i])).toBe(true))
 		expect(g.textContent).not.toMatch(/Espanha/)
+	})
+
+	test('es-zones.geojson fails → no Spain counts (the map draws no Spain)', async () => {
+		const { fx } = mockApi({ now: NOW })
+		// AEMET loaded, its zones not: Spain is not drawn, so not counted either.
+		mockApi({
+			now: NOW,
+			overrides: gated({
+				'/api/aemet/warnings': jsonResponse(fx.aemetWarnings),
+				'/data/es-zones.geojson': jsonResponse({ error: 'test' }, 404),
+			}),
+		})
+		renderRoute('/mapa')
+		const g = await picker()
+		const expected = mapPeriods(fx.warnings, NOW).map((p) => p.main)
+		const got = tabs(g)
+		expect(got).toHaveLength(expected.length)
+		got.forEach((t, i) => expect(t.textContent.startsWith(expected[i])).toBe(true))
+		expect(g.textContent).not.toMatch(/Espanha/)
+		expect(screen.queryByText('Espanha: avisos da AEMET')).not.toBeInTheDocument()
+	})
+
+	test('control: with zones and AEMET gated the same way, Spain is counted', async () => {
+		const { fx } = mockApi({ now: NOW })
+		mockApi({ now: NOW, overrides: gated({ '/api/aemet/warnings': jsonResponse(fx.aemetWarnings), '/data/es-zones.geojson': geojson('es-zones.geojson') }) })
+		renderRoute('/mapa')
+		const g = await picker()
+		expect(g.textContent).toMatch(/zonas? em Espanha/)
 	})
 })

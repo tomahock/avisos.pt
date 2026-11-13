@@ -80,9 +80,10 @@ export default function MapPage() {
 	// SRPC, IP-RAM occurrences (Madeira) — optional layer, never blocks the
 	// page; polled on its own every 2 min like the district pages.
 	const srpc = useMadeiraSrpc({ event: false })
-	// AEMET (Spain) — never blocks the map; while loading or failed
-	// (null) the picker and badges are Portugal only.
-	const { warnings: spainWarnings } = useAemetWarnings()
+	// AEMET (Spain) — never blocks the map. Spain counts (picker, badges,
+	// empty texts) only while the Spain layer is drawable: zones and
+	// warnings both loaded; otherwise (loading or failed) Portugal only.
+	const { warnings: aemetWarnings } = useAemetWarnings()
 	const occLoadedAt = srpc.loadedAt.occurrences
 	const occFailed = srpc.failed.occurrences
 
@@ -139,6 +140,8 @@ export default function MapPage() {
 		setReloadKey((k) => k + 1)
 	}, [])
 
+	const spainWarnings = spainZones && aemetWarnings ? aemetWarnings : null
+
 	// Days come from PT + ES: a day with only Spanish warnings gets a tab.
 	const periods = useMemo(
 		() => mapPeriods([...(warnings ?? []), ...(spainWarnings ?? [])], now),
@@ -172,9 +175,9 @@ export default function MapPage() {
 	// warnings must not read as "no warnings at all".
 	const emptyText = mapEmptyText({ isNow, pt: periodWarnings.length, es: periodSpain.length })
 	// Spain layer of the continental map: needs both the zones and AEMET's
-	// warnings (either failing → Portugal only).
+	// warnings (either failing → Portugal only; spainWarnings is null then).
 	const spain = useMemo(
-		() => (spainZones && spainWarnings ? { zones: spainZones, warnings: periodSpain } : null),
+		() => (spainWarnings ? { zones: spainZones, warnings: periodSpain } : null),
 		[spainZones, spainWarnings, periodSpain]
 	)
 
