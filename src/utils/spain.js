@@ -1,7 +1,7 @@
 // AEMET (Spain) warnings: display helpers and the "Espanha junto à
 // fronteira" grouping of a Portuguese district's neighbouring zones.
 
-import { borderZones } from '../data/borderZones.js'
+import { BORDER_ZONE_META, borderZones } from '../data/borderZones.js'
 import { ccaaName, provinceName } from '../data/spainNames.js'
 import { sortWarnings } from './share.js'
 
@@ -32,15 +32,20 @@ export function zonesMetaFrom(fc) {
 	return meta
 }
 
+// The generated metadata of every border zone, in the zonesMetaFrom shape:
+// the default of borderGroups/borderRegions, so naming a district's
+// neighbours never waits for es-zones.geojson.
+export const BORDER_META = new Map(Object.entries(BORDER_ZONE_META))
+
 /**
  * The AEMET zones bordering district `code` (BORDER_ZONES order, north →
  * south), each with its warnings sorted (sortWarnings).
  * `province` is the Portuguese province NAME (provinceName), null when the
- * zone has no metadata. `name` is the zone's AEMET name, falling back to the
+ * zone has no metadata. `zonesMeta` defaults to BORDER_META (null = none). `name` is the zone's AEMET name, falling back to the
  * warning's `areaName`, then to the code.
  * @returns {Array<{ code: string, name: string, province: string|null, warnings: object[] }>}
  */
-export function borderGroups(code, warnings, zonesMeta) {
+export function borderGroups(code, warnings, zonesMeta = BORDER_META) {
 	const list = Array.isArray(warnings) ? warnings : []
 	return borderZones(code).map((zone) => {
 		const own = list.filter((w) => String(w.idAreaAviso) === zone)
@@ -56,7 +61,7 @@ export function borderGroups(code, warnings, zonesMeta) {
 
 // Distinct Portuguese names of the autonomous communities bordering
 // district `code`, in BORDER_ZONES order.
-export function borderRegions(code, zonesMeta) {
+export function borderRegions(code, zonesMeta = BORDER_META) {
 	const names = borderZones(code)
 		.map((zone) => ccaaName(zonesMeta?.get(zone)?.ccaa))
 		.filter(Boolean)

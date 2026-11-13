@@ -20,6 +20,28 @@ export const BORDER_ZONES = {
 	FAR: ['612102', '612103', '612103C'],
 }
 
+// Metadata of every zone above (as in es-zones.geojson): AEMET name, INE
+// province code, AEMET autonomous-community code (names via spainNames.js).
+export const BORDER_ZONE_META = {
+	'612101': { name: 'Aracena', province: '21', ccaa: '61' },
+	'612102': { name: 'Andévalo y Condado', province: '21', ccaa: '61' },
+	'612103': { name: 'Litoral de Huelva', province: '21', ccaa: '61' },
+	'612103C': { name: 'Costa - Litoral de Huelva', province: '21', ccaa: '61' },
+	'673701': { name: 'Meseta de Salamanca', province: '37', ccaa: '67' },
+	'674901': { name: 'Sanabria', province: '49', ccaa: '67' },
+	'674902': { name: 'Meseta de Zamora', province: '49', ccaa: '67' },
+	'700601': { name: 'Vegas del Guadiana', province: '06', ccaa: '70' },
+	'700604': { name: 'Sur de Badajoz', province: '06', ccaa: '70' },
+	'701001': { name: 'Norte de Cáceres', province: '10', ccaa: '70' },
+	'701002': { name: 'Tajo y Alagón', province: '10', ccaa: '70' },
+	'701003': { name: 'Meseta cacereña', province: '10', ccaa: '70' },
+	'713202': { name: 'Miño de Ourense', province: '32', ccaa: '71' },
+	'713203': { name: 'Sur de Ourense', province: '32', ccaa: '71' },
+	'713204': { name: 'Montaña de Ourense', province: '32', ccaa: '71' },
+	'713603': { name: 'Miño de Pontevedra', province: '36', ccaa: '71' },
+	'713603C': { name: 'Costa - Miño de Pontevedra', province: '36', ccaa: '71' },
+}
+
 export function borderZones(code) {
 	return (Object.hasOwn(BORDER_ZONES, code ?? '') && BORDER_ZONES[code]) || []
 }

@@ -28,6 +28,7 @@ describe('border warnings section', () => {
 		renderRoute('/distrito/braganca')
 		const s = await section()
 		expect(s).toHaveAccessibleName('Do outro lado da fronteira Espanha')
+		expect(within(s).getByRole('img', { name: 'Espanha' })).toHaveTextContent('🇪🇸')
 		// Region and province names come from es-zones.geojson (fetched apart).
 		expect(await within(s).findByText('Galiza · Castela e Leão')).toBeInTheDocument()
 		const g = await group(s, 'Sanabria')
@@ -42,6 +43,31 @@ describe('border warnings section', () => {
 		expect(within(g).queryByRole('link', { name: 'Vento' })).not.toBeInTheDocument()
 		// Zones without warnings say so.
 		expect(within(await group(s, 'Meseta de Zamora')).getByText('Sem avisos')).toBeInTheDocument()
+	})
+
+	test('es-zones.geojson down → names, provinces and regions still there, never a raw code', async () => {
+		mockApi({ now: NOW, overrides: { '/data/es-zones.geojson': 404 } })
+		renderRoute('/distrito/braganca')
+		const s = await section()
+		expect(within(s).getByText('Galiza · Castela e Leão')).toBeInTheDocument()
+		expect(await within(s).findByRole('heading', { level: 3, name: /^Montaña de Ourense/ })).toHaveTextContent('Ourense')
+		await within(await group(s, 'Sanabria')).findByText('Vento')
+		expect(within(await group(s, 'Sanabria')).getByRole('heading', { level: 3 })).toHaveTextContent('Zamora')
+		expect(s.textContent).not.toMatch(/\d{6}/)
+	})
+
+	test('while AEMET loads: names already there, no raw codes', async () => {
+		let release
+		const pending = new Promise((r) => (release = r))
+		mockApi({ now: NOW, overrides: { '/api/aemet/warnings': () => pending } })
+		renderRoute('/distrito/braganca')
+		const s = await section()
+		expect(within(s).getByText(/A carregar os avisos de Espanha/)).toBeInTheDocument()
+		expect(within(s).getByText('Galiza · Castela e Leão')).toBeInTheDocument()
+		expect(s.textContent).not.toMatch(/\d{6}/)
+		release(new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } }))
+		expect(await within(s).findByText('Sem avisos do outro lado da fronteira')).toBeInTheDocument()
+		expect(s.textContent).not.toMatch(/\d{6}/)
 	})
 
 	test('Lisboa has no section', async () => {
@@ -65,6 +91,7 @@ describe('border warnings section', () => {
 		const { user } = renderRoute('/distrito/faro')
 		const s = await section()
 		expect(await within(s).findByText(/Não foi possível carregar os avisos de Espanha\./)).toBeInTheDocument()
+		expect(within(s).getByRole('status')).toHaveTextContent('Não foi possível carregar os avisos de Espanha.')
 		const retry = within(s).getByRole('button', { name: 'Tentar de novo' })
 		expect(screen.getByRole('heading', { level: 2, name: 'Avisos' })).toBeInTheDocument()
 		expect(screen.getByText('Ondas de sudoeste com 4 a 5 metros.')).toBeInTheDocument()

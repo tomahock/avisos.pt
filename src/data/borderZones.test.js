@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs'
 import * as turf from '@turf/turf'
 import { beforeAll, describe, expect, test } from 'vitest'
 
-import { BORDER_ZONES, borderZones } from './borderZones.js'
+import { BORDER_ZONES, BORDER_ZONE_META, borderZones } from './borderZones.js'
 import { ccaaName, provinceName, zoneLabel } from './spainNames.js'
 
 const read = (p) => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8'))
@@ -58,6 +58,19 @@ describe('border table', () => {
 			for (const z of list) expect(codes.has(z), z).toBe(true)
 			for (const z of list.filter((c) => c.endsWith('C'))) expect(list).toContain(z.slice(0, -1))
 		}
+	})
+
+	test('static metadata of every listed zone, same as es-zones.geojson', () => {
+		const listed = [...new Set(Object.values(BORDER_ZONES).flat())].sort()
+		expect(Object.keys(BORDER_ZONE_META).sort()).toEqual(listed)
+		const byCode = new Map(zones.features.map((f) => [f.properties.code, f.properties]))
+		for (const z of listed) {
+			const { name, province, ccaa } = byCode.get(z)
+			expect(BORDER_ZONE_META[z], z).toEqual({ name, province, ccaa })
+		}
+		expect(BORDER_ZONE_META['674901']).toEqual({ name: 'Sanabria', province: '49', ccaa: '67' })
+		expect(BORDER_ZONE_META['713603C']).toEqual({ name: 'Costa - Miño de Pontevedra', province: '36', ccaa: '71' })
+		expect(BORDER_ZONE_META['612103'].name).toBe('Litoral de Huelva')
 	})
 
 	test('borderZones() reads the table and is empty for unknown codes', () => {

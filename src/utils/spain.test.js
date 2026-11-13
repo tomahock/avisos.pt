@@ -72,6 +72,13 @@ describe('borderGroups', () => {
 		expect(borderGroups('BGC', aemetWarnings, null).map((g) => g.name)[0]).toBe('713204')
 	})
 
+	test('zonesMeta omitted → the static BORDER_ZONE_META', () => {
+		const groups = borderGroups('BGC', aemetWarnings)
+		expect(groups.map((g) => g.name)).toEqual(['Montaña de Ourense', 'Sanabria', 'Sur de Ourense', 'Meseta de Zamora', 'Meseta de Salamanca'])
+		expect(groups.find((g) => g.code === '674901').province).toBe('Zamora')
+		expect(borderRegions('BGC')).toEqual(['Galiza', 'Castela e Leão'])
+	})
+
 	test('district without Spanish neighbours → []', () => {
 		expect(borderGroups('LSB', aemetWarnings, meta)).toEqual([])
 		expect(borderGroups('BGC', null, meta).every((g) => g.warnings.length === 0)).toBe(true)

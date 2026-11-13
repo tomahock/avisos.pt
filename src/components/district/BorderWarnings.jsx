@@ -3,7 +3,6 @@ import { useMemo } from 'react'
 import WarningCard from '../warnings/WarningCard.jsx'
 import { borderZones } from '../../data/borderZones.js'
 import { useAemetWarnings } from '../../hooks/useAemetWarnings.js'
-import { useSpainZones } from '../../hooks/useSpainZones.js'
 import { borderGroups, borderRegions } from '../../utils/spain.js'
 
 // «Do outro lado da fronteira» (#56): the AEMET warnings of the Spanish zones
@@ -17,21 +16,21 @@ export default function BorderWarnings({ code }) {
 
 function Section({ code }) {
 	const { warnings, error, retry } = useAemetWarnings()
-	const zonesMeta = useSpainZones()
-	const groups = useMemo(() => borderGroups(code, warnings, zonesMeta), [code, warnings, zonesMeta])
-	const regions = borderRegions(code, zonesMeta)
+	// Names from the generated BORDER_ZONE_META (the default): no GeoJSON.
+	const groups = useMemo(() => borderGroups(code, warnings), [code, warnings])
+	const regions = borderRegions(code)
 	const any = groups.some((g) => g.warnings.length > 0)
 
 	return (
 		<section aria-labelledby="fronteira" className="mt-8">
 			<h2 id="fronteira" className="text-lg font-bold text-gray-900">
-				Do outro lado da fronteira <span aria-label="Espanha">🇪🇸</span>
+				Do outro lado da fronteira <span role="img" aria-label="Espanha">🇪🇸</span>
 			</h2>
 			{regions.length > 0 && <p className="mt-1 text-sm text-gray-600">{regions.join(' · ')}</p>}
 
 			<div className="mt-3">
 				{warnings === null && error ? (
-					<p className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
+					<p role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
 						<i className="fas fa-triangle-exclamation" aria-hidden />
 						Não foi possível carregar os avisos de Espanha.
 						<button type="button" onClick={retry} className="font-semibold underline">
@@ -45,7 +44,7 @@ function Section({ code }) {
 				) : (
 					<>
 						{error && (
-							<p className="mb-3 text-xs text-amber-800 dark:text-amber-200">
+							<p role="status" className="mb-3 text-xs text-amber-800 dark:text-amber-200">
 								<i className="fas fa-triangle-exclamation mr-1" aria-hidden />
 								Não foi possível atualizar os avisos de Espanha.
 							</p>
