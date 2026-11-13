@@ -104,3 +104,33 @@ test('map_without_spain_when_aemet_fails', async ({ page }) => {
 	expect(await tabs(page).count()).toBeLessThan(withSpain)
 	await expect(page.getByRole('group', { name: 'Período' })).not.toContainText('em Espanha')
 })
+
+// Spanish pills need both «Avisos em Espanha» and «Ícones dos avisos» on.
+test('spanish icon pills follow both toggles', async ({ page }) => {
+	await page.goto('/mapa')
+	const cont = section(page, 'Portugal Continental')
+	const sanabria = cont.locator('.leaflet-marker-pane .es-pill-674901')
+	await expect(sanabria).toHaveCount(1)
+	await sanabria.dispatchEvent('mouseover')
+	await expect(cont.locator('.leaflet-tooltip')).toContainText('Sanabria (Espanha)')
+	await sanabria.dispatchEvent('mouseout')
+
+	await cont.locator('.leaflet-control-layers').hover()
+	const spain = cont.getByLabel('Avisos em Espanha')
+	const icons = cont.getByLabel('Ícones dos avisos')
+
+	// Spain on, icons off.
+	await icons.uncheck()
+	await expect(cont.locator('.es-pill')).toHaveCount(0)
+	await expect(cont.locator(`${ES}[fill="#f97316"]`)).toHaveCount(1)
+
+	// Icons on, Spain off: Portuguese pills only.
+	await icons.check()
+	await spain.uncheck()
+	await expect(cont.locator('.es-pill')).toHaveCount(0)
+	await expect(cont.locator('.leaflet-marker-pane .leaflet-marker-icon').first()).toBeAttached()
+
+	// Both on again.
+	await spain.check()
+	await expect(sanabria).toHaveCount(1)
+})
