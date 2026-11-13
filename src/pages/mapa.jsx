@@ -15,6 +15,7 @@ import { mapPeriods, warningsInPeriod } from '../utils/timeline.js'
 import { bandsForRegion } from '../utils/seaBands.js'
 import { occurrenceWindow, occurrencesBetween, parishGroups, srpcFresh, totalCount } from '../utils/madeira.js'
 import { useActiveWarnings } from '../hooks/useActiveWarnings.js'
+import { useAemetWarnings } from '../hooks/useAemetWarnings.js'
 import { useMadeiraSrpc } from '../hooks/useMadeiraSrpc.js'
 
 const REGIONS = [
@@ -77,6 +78,9 @@ export default function MapPage() {
 	// SRPC, IP-RAM occurrences (Madeira) — optional layer, never blocks the
 	// page; polled on its own every 2 min like the district pages.
 	const srpc = useMadeiraSrpc({ event: false })
+	// AEMET (Spain) — never blocks the map; while loading or failed
+	// (null) the picker and badges are Portugal only.
+	const { warnings: spainWarnings } = useAemetWarnings()
 	const occLoadedAt = srpc.loadedAt.occurrences
 	const occFailed = srpc.failed.occurrences
 
@@ -128,7 +132,11 @@ export default function MapPage() {
 		setReloadKey((k) => k + 1)
 	}, [])
 
-	const periods = useMemo(() => mapPeriods(warnings ?? [], now), [warnings, now])
+	// Days come from PT + ES: a day with only Spanish warnings gets a tab.
+	const periods = useMemo(
+		() => mapPeriods([...(warnings ?? []), ...(spainWarnings ?? [])], now),
+		[warnings, spainWarnings, now]
+	)
 	// Unknown / stale ?dia= (e.g. a shared link from yesterday) falls back to "Agora".
 	const period = periods.find((p) => p.key === searchParams.get('dia')) ?? periods[0]
 	const selectPeriod = useCallback(
@@ -139,6 +147,8 @@ export default function MapPage() {
 		() => (warnings ? warningsInPeriod(warnings, period) : []),
 		[warnings, period]
 	)
+	// Spanish warnings of the selected period (empty texts; the Spain layer).
+	const periodSpain = useMemo(() => warningsInPeriod(spainWarnings ?? [], period), [spainWarnings, period])
 	const isNow = period.key === 'agora'
 	// Occurrences are past events: "Agora" = last 24 h, today = since
 	// midnight, future days = none (the layer stays, empty, with a note).
@@ -151,7 +161,16 @@ export default function MapPage() {
 		() => (occurrences && occWindow ? occurrencesBetween(occurrences, occWindow.from, occWindow.to) : []),
 		[occurrences, occWindow]
 	)
-	const emptyText = isNow ? 'Sem avisos em vigor.' : 'Sem avisos neste período.'
+	// The map's empty texts speak of Portugal; a period with only Spanish
+	// warnings must not read as "no warnings at all".
+	const emptyText =
+		periodWarnings.length === 0 && periodSpain.length > 0
+			? isNow
+				? 'Sem avisos em vigor em Portugal.'
+				: 'Sem avisos em Portugal neste período.'
+			: isNow
+				? 'Sem avisos em vigor.'
+				: 'Sem avisos neste período.'
 
 	const regionData = useMemo(() => {
 		if (!geoContinental || !geoArquipelagos) return null
@@ -201,6 +220,7 @@ export default function MapPage() {
 				<MapPeriodPicker
 					periods={periods}
 					warnings={warnings}
+					spainWarnings={spainWarnings ?? []}
 					selected={period.key}
 					onSelect={selectPeriod}
 				/>
