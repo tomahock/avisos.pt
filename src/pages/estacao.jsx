@@ -16,6 +16,8 @@ import { useStationDaily, useStationSeries } from '../hooks/useStationSeries.js'
 import { chartSets } from '../utils/chartThresholds.js'
 import { stationThresholds } from '../utils/criteriaThresholds.js'
 import { rollingSum } from '../utils/rolling.js'
+import { cumulativeRain, RAIN_PERIODS } from '../utils/rainCumulative.js'
+import { stationTimeZone } from '../utils/stationToday.js'
 import { useWarningsData } from '../hooks/useWarningsData.js'
 import { usePageTitle } from '../utils/pageTitle.js'
 import { areaWarnings, districtPath, warningHeadline } from '../utils/share.js'
@@ -43,16 +45,20 @@ const RANGES = [
 ]
 
 const timeFmt = (t) => t.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-const dayHourFmt = (t) =>
-	t.toLocaleString('pt-PT', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+// `tz` (optional, IANA): format in that time zone instead of the browser's —
+// the accumulated-rain chart is anchored to the station's midnight.
+const dayHourFmt = (t, tz) =>
+	t.toLocaleString('pt-PT', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', ...(tz && { timeZone: tz }) })
+const hourIn = (t, tz) =>
+	tz ? Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: tz }).format(t)) : t.getHours()
 
 // X labels for hourly charts: day name at local midnight, otherwise every
 // 6 h (every 12/24 h on the longer ranges so labels don't collide).
-function hourlyXLabel(hours) {
+function hourlyXLabel(hours, tz) {
 	const every = hours <= 48 ? 6 : hours <= 72 ? 12 : 24
 	return (p) => {
-		const h = p.t.getHours()
-		if (h === 0) return p.t.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric' }).replace('.', '')
+		const h = hourIn(p.t, tz)
+		if (h === 0) return p.t.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', ...(tz && { timeZone: tz }) }).replace('.', '')
 		if (every < 24 && h % every === 0) return String(h).padStart(2, '0')
 		return null
 	}
@@ -238,6 +244,92 @@ function HourlySection({ id, sets, region }) {
 						))}
 					</div>
 					<HourlyTable points={points} />
+				</>
+			)}
+		</section>
+	)
+}
+
+// Rain accumulated since local 00:00 (#58): its own period picker (today by
+// default) and its own series, independent of the "Hora a hora" range.
+function RainSection({ id, tz }) {
+	const [days, setDays] = useState(1)
+	const [hoverIdx, setHoverIdx] = useState(null)
+	const period = RAIN_PERIODS.find((p) => p.days === days)
+	const { points, limited } = useStationSeries(id, period.hours)
+	const shownDays = limited ? 1 : days
+	const acc = useMemo(
+		() => (points ? cumulativeRain(points, { days: shownDays, tz, now: new Date() }) : null),
+		[points, shownDays, tz]
+	)
+	const xLabel = useMemo(() => hourlyXLabel(shownDays * 24, tz), [shownDays, tz])
+	const formatTime = useMemo(() => (t) => dayHourFmt(t, tz), [tz])
+	const since = acc?.from
+		.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz })
+		.replace('-feira', '')
+	const place = tz === 'Atlantic/Azores' ? 'hora dos Açores' : 'hora de Portugal continental'
+
+	return (
+		<section className="mt-8">
+			<div className="flex flex-wrap items-end justify-between gap-3">
+				<div>
+					<h2 className="text-lg font-bold text-gray-900">Chuva acumulada</h2>
+					{since && <p className="text-xs text-gray-500">Desde as 00:00 de {since} ({place})</p>}
+				</div>
+				{!limited && (
+					<div className="flex gap-1 p-1 bg-gray-100 rounded-lg" role="tablist" aria-label="Período da chuva acumulada">
+						{RAIN_PERIODS.map((p) => (
+							<button
+								key={p.days}
+								type="button"
+								role="tab"
+								aria-selected={days === p.days}
+								onClick={() => setDays(p.days)}
+								className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
+									days === p.days ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+								}`}
+							>
+								{p.label}
+							</button>
+						))}
+					</div>
+				)}
+			</div>
+			{acc === null ? (
+				<p className="mt-4 text-sm text-gray-500">A carregar…</p>
+			) : acc.total === null ? (
+				<p className="mt-4 text-sm text-gray-500">
+					{Date.now() - acc.from.getTime() < 2 * 3600 * 1000
+						? 'Ainda sem leituras hoje: a primeira leitura do dia é a das 01:00 (chuva entre as 00:00 e as 01:00).'
+						: 'Sem leituras de chuva neste período.'}
+				</p>
+			) : (
+				<>
+					<p className="mt-3 text-sm text-gray-700">
+						{acc.total === 0 && acc.missing === 0 ? (
+							'Sem chuva neste período.'
+						) : (
+							<>
+								Total <strong className="text-gray-900 tabular-nums">{acc.missing > 0 ? '≥ ' : ''}{fmtMm(acc.total)}</strong>
+								{acc.missing > 0 && <span className="text-gray-500"> ({acc.missing} h sem dados)</span>}
+							</>
+						)}
+					</p>
+					<div className="mt-3">
+						<StationChart
+							title="Acumulado (mm)"
+							kind="line"
+							points={acc.points}
+							format={fmtMm}
+							stats={null}
+							showLatest={false}
+							formatTime={formatTime}
+							xLabel={xLabel}
+							hoverIdx={hoverIdx}
+							onHover={setHoverIdx}
+							note="A chuva de cada leitura é a da hora que termina nesse momento: a das 00:00 conta para o dia anterior."
+						/>
+					</div>
 				</>
 			)}
 		</section>
@@ -439,6 +531,7 @@ export default function EstacaoPage() {
 
 				{criteria && <ThresholdsToggle areaName={area?.name} regionKey={criteria.region} />}
 				<HourlySection id={station.id} sets={sets} region={criteria?.region} />
+				<RainSection id={station.id} tz={stationTimeZone(area?.region)} />
 				<DailySection id={station.id} sets={sets} />
 				<Nearby station={station} rows={rows} />
 
