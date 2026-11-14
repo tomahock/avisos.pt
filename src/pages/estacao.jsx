@@ -45,16 +45,20 @@ const RANGES = [
 ]
 
 const timeFmt = (t) => t.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-const dayHourFmt = (t) =>
-	t.toLocaleString('pt-PT', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+// `tz` (optional, IANA): format in that time zone instead of the browser's —
+// the accumulated-rain chart is anchored to the station's midnight.
+const dayHourFmt = (t, tz) =>
+	t.toLocaleString('pt-PT', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', ...(tz && { timeZone: tz }) })
+const hourIn = (t, tz) =>
+	tz ? Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: tz }).format(t)) : t.getHours()
 
 // X labels for hourly charts: day name at local midnight, otherwise every
 // 6 h (every 12/24 h on the longer ranges so labels don't collide).
-function hourlyXLabel(hours) {
+function hourlyXLabel(hours, tz) {
 	const every = hours <= 48 ? 6 : hours <= 72 ? 12 : 24
 	return (p) => {
-		const h = p.t.getHours()
-		if (h === 0) return p.t.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric' }).replace('.', '')
+		const h = hourIn(p.t, tz)
+		if (h === 0) return p.t.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', ...(tz && { timeZone: tz }) }).replace('.', '')
 		if (every < 24 && h % every === 0) return String(h).padStart(2, '0')
 		return null
 	}
@@ -258,7 +262,8 @@ function RainSection({ id, tz }) {
 		() => (points ? cumulativeRain(points, { days: shownDays, tz, now: new Date() }) : null),
 		[points, shownDays, tz]
 	)
-	const xLabel = useMemo(() => hourlyXLabel(shownDays * 24), [shownDays])
+	const xLabel = useMemo(() => hourlyXLabel(shownDays * 24, tz), [shownDays, tz])
+	const formatTime = useMemo(() => (t) => dayHourFmt(t, tz), [tz])
 	const since = acc?.from
 		.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz })
 		.replace('-feira', '')
@@ -318,7 +323,7 @@ function RainSection({ id, tz }) {
 							format={fmtMm}
 							stats={null}
 							showLatest={false}
-							formatTime={dayHourFmt}
+							formatTime={formatTime}
 							xLabel={xLabel}
 							hoverIdx={hoverIdx}
 							onHover={setHoverIdx}

@@ -5,7 +5,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
-import { RAIN_STATION_ID } from '../fixtures/data.js'
+import { RAIN_STATION_ID, WIND_STATION_ID } from '../fixtures/data.js'
 import { mockApi } from '../helpers/api.js'
 import { renderRoute } from '../helpers/render.jsx'
 
@@ -65,4 +65,17 @@ test('just after midnight: waiting for the first reading of the day, not "no dat
 	const s = await section()
 	await waitFor(() => expect(within(s).getByText(/a primeira leitura do dia é a das 01:00/i)).toBeInTheDocument())
 	expect(within(s).queryByText(/Sem leituras de chuva neste período/)).toBeNull()
+})
+
+test('Açores station: axis and tooltip in the station time zone, not the browser\'s', async () => {
+	// Tests run in Europe/Lisbon; the Açores are one hour behind. "Hoje" starts at
+	// 00:00 in the Açores (01:00Z): the axis must name the day at that point.
+	mockApi({ now: NOW })
+	renderRoute(`/estacao/${WIND_STATION_ID}-acores-vento-teste`)
+	const s = await section()
+	expect(await within(s).findByText(/hora dos Açores/)).toBeInTheDocument()
+	await waitFor(() => expect(s.querySelector('figure svg text')).not.toBeNull())
+	const labels = [...s.querySelectorAll('figure svg text')].map((t) => t.textContent)
+	// Day label at the Açores midnight ("qua, 11" / "quarta, 11" depending on ICU).
+	expect(labels.some((l) => /^qua(rta)?\.?, 11$/.test(l))).toBe(true)
 })
